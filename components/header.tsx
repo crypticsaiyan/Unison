@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 const NAV_LINKS = [
   { href: "/sessions", label: "Sessions" },
   { href: "/broadcast", label: "Broadcast" },
-  { href: "/rooms", label: "Rooms" },
+
   { href: "/organiser?key=demo", label: "Organiser" },
 ]
 
@@ -27,18 +27,15 @@ export function Header() {
   return (
     <header className={headerClass}>
       <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-4 sm:px-6 lg:px-12">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="relative h-8 w-8 transition-all duration-300 group-hover:scale-110">
-            <Image
-              src="/logo.svg"
-              alt="Unison Logo"
-              fill
-              className="object-contain"
-            />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-foreground font-heading">
-            Unison
-          </span>
+        <Link href="/" className="flex items-center group transition-opacity hover:opacity-80">
+          <Image
+            src="/logo.svg"
+            alt="Unison"
+            width={110}
+            height={24}
+            className="h-6 w-auto"
+            priority
+          />
         </Link>
 
         {/* Desktop nav */}

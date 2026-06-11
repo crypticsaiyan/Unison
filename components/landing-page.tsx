@@ -13,7 +13,6 @@ import {
   Lightning,
   ChartLineUp,
   ChatCircleDots,
-  UsersThree,
 } from "@phosphor-icons/react"
 
 const LANGUAGES = [
@@ -45,10 +44,6 @@ export function LandingPage() {
           <div className="mx-auto grid max-w-[1400px] items-center gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:gap-8 lg:px-12 lg:py-28">
             {/* Left: copy */}
             <div className="relative z-10 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-900)]/60 px-3 py-1 text-xs font-medium text-[var(--color-keppel-400)] backdrop-blur">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-keppel-400)]" />
-                Conference inclusion infrastructure
-              </div>
 
               <h1 className="mt-6 text-balance text-3xl font-bold leading-[1.1] tracking-tight text-[var(--color-baltic-sea-50)] sm:text-4xl lg:text-5xl">
                 Every talk,
@@ -85,10 +80,6 @@ export function LandingPage() {
                 </Button>
               </div>
 
-              {/* tiny trust line */}
-              <p className="mt-6 text-xs uppercase tracking-wider text-[var(--color-baltic-sea-500)]">
-                Powered by Deepgram · Google Translate · OpenRouter
-              </p>
             </div>
 
             {/* Right: globe */}
@@ -274,21 +265,6 @@ export function LandingPage() {
                 </p>
               </div>
 
-              {/* Rooms */}
-              <Link
-                href="/rooms"
-                className="group relative overflow-hidden rounded-2xl border border-[var(--color-baltic-sea-800)] bg-[var(--color-baltic-sea-950)] p-7 transition-all hover:border-[var(--color-keppel-600)]"
-              >
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-baltic-sea-800)] text-[var(--color-keppel-400)]">
-                  <UsersThree className="h-5 w-5" weight="fill" />
-                </div>
-                <h3 className="mt-4 text-lg font-semibold text-[var(--color-baltic-sea-50)]">
-                  Multilingual rooms
-                </h3>
-                <p className="mt-2 text-sm leading-relaxed text-[var(--color-baltic-sea-400)]">
-                  Many-to-many meetings with live video and per-speaker dubbing.
-                </p>
-              </Link>
 
             </div>
           </div>
@@ -370,7 +346,7 @@ export function LandingPage() {
                 variant="outline"
                 className="w-full border-[var(--color-baltic-sea-700)] bg-transparent font-semibold text-[var(--color-baltic-sea-100)] hover:border-[var(--color-keppel-500)] hover:bg-[var(--color-baltic-sea-900)] sm:w-auto"
               >
-                <Link href="/rooms">Join a room</Link>
+                <Link href="/sessions">Browse sessions</Link>
               </Button>
             </div>
           </div>
