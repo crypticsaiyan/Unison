@@ -23,7 +23,13 @@ npm-debug.log*
 pnpm-debug.log*
 
 # test output
-testsprite_tests/tmp/
+testsprite_tests/
+test_resources/
+test_cobe*.js
+check_cobe.js
+
+# debug scripts
+scripts/test-*.mjs
 
 # Runtime session store
 /data/
