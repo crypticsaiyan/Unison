@@ -1,0 +1,178 @@
+/*
+ * Unison Kendo theme overrides.
+ * Maps Kendo's CSS custom properties onto the existing dark
+ * baltic-sea / keppel palette so Kendo components blend with the site.
+ * Loaded AFTER @progress/kendo-theme-default so these win.
+ */
+:root {
+  /* Core color tokens */
+  --kendo-color-primary: var(--color-keppel-500);
+  --kendo-color-primary-hover: var(--color-keppel-400);
+  --kendo-color-primary-active: var(--color-keppel-600);
+  --kendo-color-primary-emphasis: var(--color-keppel-400);
+  --kendo-color-primary-subtle: var(--color-keppel-950);
+  --kendo-color-primary-subtle-hover: var(--color-keppel-900);
+  --kendo-color-primary-on-subtle: var(--color-keppel-100);
+  --kendo-color-on-primary: var(--color-keppel-950);
+
+  --kendo-color-secondary: var(--color-baltic-sea-700);
+  --kendo-color-base: var(--color-baltic-sea-900);
+  --kendo-color-base-hover: var(--color-baltic-sea-800);
+  --kendo-color-base-active: var(--color-baltic-sea-700);
+  --kendo-color-on-base: var(--color-baltic-sea-100);
+
+  --kendo-color-surface: var(--color-baltic-sea-900);
+  --kendo-color-surface-alt: var(--color-baltic-sea-950);
+  --kendo-color-on-surface: var(--color-baltic-sea-100);
+  --kendo-color-on-app-surface: var(--color-baltic-sea-100);
+  --kendo-color-app-surface: var(--color-baltic-sea-950);
+
+  --kendo-color-border: var(--color-baltic-sea-700);
+  --kendo-color-border-alt: var(--color-baltic-sea-600);
+
+  --kendo-component-bg: var(--color-baltic-sea-900);
+  --kendo-component-text: var(--color-baltic-sea-100);
+  --kendo-component-border: var(--color-baltic-sea-700);
+
+  /* Radius + typography to match the site */
+  --kendo-border-radius-sm: 0.5rem;
+  --kendo-border-radius-md: 0.75rem;
+  --kendo-border-radius-lg: 1rem;
+  --kendo-font-family: var(--font-sans), "Geist", system-ui, sans-serif;
+}
+
+/* Component surfaces ------------------------------------------------------ */
+.k-dropdownlist,
+.k-input,
+.k-picker,
+.k-grid,
+.k-listview,
+.k-card,
+.k-tilelayout,
+.k-tilelayout-item,
+.k-window,
+.k-dialog,
+.k-chat {
+  background-color: var(--color-baltic-sea-900);
+  color: var(--color-baltic-sea-100);
+  border-color: var(--color-baltic-sea-700);
+}
+
+.k-picker,
+.k-input {
+  border-radius: 0.75rem;
+}
+
+/* Popups / dropdown lists are portaled to body */
+.k-animation-container,
+.k-popup,
+.k-list,
+.k-list-container {
+  background-color: var(--color-baltic-sea-900) !important;
+  color: var(--color-baltic-sea-100) !important;
+  border-color: var(--color-baltic-sea-700) !important;
+}
+
+.k-list-item:hover,
+.k-list-optionlabel:hover {
+  background-color: var(--color-baltic-sea-800) !important;
+}
+
+.k-list-item.k-selected,
+.k-list-item.k-focus,
+.k-selected {
+  background-color: var(--color-keppel-600) !important;
+  color: var(--color-keppel-950) !important;
+}
+
+/* Grid -------------------------------------------------------------------- */
+.k-grid {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+.k-grid .k-grid-header,
+.k-grid th.k-header,
+.k-grid-header-wrap {
+  background-color: var(--color-baltic-sea-950);
+  color: var(--color-baltic-sea-200);
+  border-color: var(--color-baltic-sea-700);
+}
+.k-grid td,
+.k-grid .k-table-td {
+  background-color: var(--color-baltic-sea-900);
+  color: var(--color-baltic-sea-100);
+  border-color: var(--color-baltic-sea-800);
+}
+.k-grid tr.k-alt > td,
+.k-grid .k-table-alt-row > td {
+  background-color: var(--color-baltic-sea-950);
+}
+
+/* Card / TileLayout ------------------------------------------------------- */
+.k-card,
+.k-tilelayout-item {
+  border-radius: 0.75rem;
+}
+
+/* Window / Dialog --------------------------------------------------------- */
+.k-window,
+.k-dialog {
+  border-radius: 1rem;
+  box-shadow: 0 20px 60px -20px rgba(0, 0, 0, 0.7);
+}
+.k-window-titlebar,
+.k-dialog-titlebar {
+  background-color: var(--color-baltic-sea-950);
+  color: var(--color-baltic-sea-100);
+  border-color: var(--color-baltic-sea-700);
+}
+
+/* Buttons ----------------------------------------------------------------- */
+.k-button-solid-primary {
+  background-color: var(--color-keppel-500);
+  border-color: var(--color-keppel-500);
+  color: var(--color-keppel-950);
+}
+.k-button-solid-primary:hover {
+  background-color: var(--color-keppel-400);
+  border-color: var(--color-keppel-400);
+}
+.k-button-solid-base {
+  background-color: var(--color-baltic-sea-800);
+  border-color: var(--color-baltic-sea-700);
+  color: var(--color-baltic-sea-100);
+}
+
+/* Chat (conversational-ui) ----------------------------------------------- */
+.k-chat {
+  border-radius: 0.75rem;
+}
+.k-chat .k-message {
+  background-color: var(--color-baltic-sea-800);
+  color: var(--color-baltic-sea-100);
+}
+.k-chat .k-author + .k-message,
+.k-chat .k-message-group.k-only .k-message {
+  border-radius: 0.75rem;
+}
+/* Outgoing (attendee) bubbles use accent */
+.k-chat .k-message-group.k-alt .k-message,
+.k-chat .k-alt .k-message {
+  background-color: var(--color-keppel-600);
+  color: var(--color-keppel-950);
+}
+.k-chat .k-message-box,
+.k-chat .k-chat-input {
+  background-color: var(--color-baltic-sea-950);
+  border-color: var(--color-baltic-sea-700);
+}
+
+/* ListView ---------------------------------------------------------------- */
+.k-listview {
+  border-radius: 0.75rem;
+  background-color: transparent;
+  border-color: var(--color-baltic-sea-800);
+}
+.k-listview-content {
+  background-color: transparent;
+}
