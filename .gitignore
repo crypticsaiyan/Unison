@@ -17,6 +17,10 @@ out/
 *.swp
 *.swo
 
+# IDE / tool config
+.vscode/
+.kiro/
+
 # logs
 *.log
 npm-debug.log*
