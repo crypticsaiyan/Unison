@@ -6,6 +6,8 @@ node_modules/
 .next/
 dist/
 out/
+tsconfig.tsbuildinfo
+package-lock.json
 
 # env files
 .env
