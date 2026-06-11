@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+.next/
+dist/
+out/
+
+# env files
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+*.swp
+*.swo
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# test output
+testsprite_tests/tmp/
+
+# Runtime session store
+/data/

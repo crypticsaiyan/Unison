@@ -1,0 +1,147 @@
+# Unison Architecture
+
+## System Overview
+
+Two processes run simultaneously:
+
+```mermaid
+graph LR
+    Browser["Browser\n(Next.js client)"]
+
+    subgraph "Next.js :3000"
+        UI["UI Pages\n/broadcast /sessions /room"]
+        QA["/api/qa"]
+        SUMMARY["/api/summary"]
+        TTS_PREV["/api/tts-preview"]
+    end
+
+    subgraph "WebSocket Server :8080"
+        WS["ws server\nserver/index.ts"]
+        STT["STTService\nDeepgram Nova-2"]
+        TR["TranslationService\nGoogle gtx"]
+        TTS["TTSService\nDeepgram Aura-2"]
+    end
+
+    Browser -- "HTTP / pages" --> UI
+    Browser -- "REST" --> QA
+    Browser -- "REST" --> SUMMARY
+    Browser -- "REST" --> TTS_PREV
+    Browser -- "WebSocket\nbinary + JSON" --> WS
+    WS --> STT --> TR --> TTS --> WS
+```
+
+---
+
+## WebSocket Role Routing
+
+```mermaid
+flowchart TD
+    CONN["New WS connection\n?role=..."]
+    CONN --> R1{"role?"}
+
+    R1 -- "host" --> HOST["Broadcast host\nopen STT stream\nreceive PCM\nfan out to listeners"]
+    R1 -- "listener" --> LIST["Broadcast listener\nreceive translated PCM + transcript"]
+    R1 -- "member" --> MEM["Room member (audio)\nper-member STT\nbidirectional PCM"]
+    R1 -- "member-video" --> VID["Room member (video)\nJPEG frames fan-out"]
+```
+
+---
+
+## Broadcast Flow
+
+```mermaid
+sequenceDiagram
+    participant H as Host browser
+    participant WS as WS server
+    participant DG_STT as Deepgram Nova-2
+    participant TR as TranslationService
+    participant DG_TTS as Deepgram Aura-2
+    participant L_ES as Listener (ES)
+    participant L_FR as Listener (FR)
+
+    H->>WS: connect ?role=host&source=en&targets=es,fr
+    WS->>DG_STT: open streaming connection
+
+    loop every ~100ms
+        H->>WS: PCM binary frame
+        WS->>DG_STT: forward audio
+    end
+
+    DG_STT-->>WS: final transcript
+    WS->>TR: translate(text, en→es)
+    WS->>TR: translate(text, en→fr)
+
+    WS-->>L_ES: {type:"transcript", translated}
+    WS-->>L_FR: {type:"transcript", translated}
+
+    WS->>DG_TTS: streamAudio("Hola mundo", es)
+    WS->>DG_TTS: streamAudio("Bonjour monde", fr)
+
+    loop PCM chunks
+        DG_TTS-->>WS: linear16 chunk
+        WS-->>L_ES: binary PCM
+        WS-->>L_FR: binary PCM
+    end
+```
+
+---
+
+## TTS Service — Persistent WebSocket Pool
+
+Each voice model gets one persistent `SpeakLiveClient` connection. `sendText()` + `flush()` streams audio chunks back via `LiveTTSEvents.Audio`, eliminating per-sentence HTTP round-trips.
+
+```mermaid
+flowchart LR
+    TEXT["text + voice"]
+    TEXT --> POOL{"connection\npool"}
+    POOL -- "exists + open" --> SEND["sendText + flush"]
+    POOL -- "missing/closed" --> OPEN["new SpeakLiveClient\nlinear16, 24kHz"]
+    OPEN --> SEND
+    SEND --> CHUNKS["LiveTTSEvents.Audio\n→ onChunk(buf)"]
+    SEND --> FLUSHED["LiveTTSEvents.Flushed\n→ resolve promise"]
+```
+
+---
+
+## Translation Service
+
+```mermaid
+flowchart TD
+    REQ["translate(text, src, tgt)"]
+    REQ --> SAME{"src == tgt?"}
+    SAME -- "yes" --> PASSTHROUGH["return text"]
+    SAME -- "no" --> CACHE{"LRU cache hit?"}
+    CACHE -- "yes" --> RETURN_CACHE["return cached"]
+    CACHE -- "no" --> INFLIGHT{"in-flight exists?"}
+    INFLIGHT -- "yes" --> SHARE["share promise"]
+    INFLIGHT -- "no" --> FETCH["GET google gtx\n2.5s timeout"]
+    FETCH -- "ok" --> STORE["store LRU (max 500)"]
+    FETCH -- "error" --> FALLBACK["return original"]
+```
+
+---
+
+## Browser Audio Playback
+
+```mermaid
+flowchart TD
+    BINARY["ArrayBuffer\nbinary WS message"]
+    BINARY --> DECODE["Int16LE → float32\n÷ 32768"]
+    DECODE --> ABUF["AudioContext.createBuffer\nmono, 24kHz"]
+    ABUF --> SCHED{"nextStartTime\n< currentTime?"}
+    SCHED -- "yes" --> RESET["nextStartTime = currentTime"]
+    SCHED -- "no" --> QUEUE["source.start(nextStartTime)"]
+    RESET --> QUEUE
+    QUEUE --> ADVANCE["nextStartTime += buffer.duration"]
+```
+
+---
+
+## Environment Variables
+
+| Variable | Purpose |
+|----------|---------|
+| `DEEPGRAM_API_KEY` | STT and TTS |
+| `NEXT_PUBLIC_WS_URL` | WebSocket server address |
+| `PORT` / `WEBSOCKET_PORT` | WS listening port (default 8080) |
+| `OPENROUTER_API_KEY` | AI Q&A and session summaries |
