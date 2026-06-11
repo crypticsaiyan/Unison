@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { DropDownList } from "@progress/kendo-react-dropdowns"
 import { Microphone, Globe, ArrowRight, Clock, GearSix } from "@phosphor-icons/react"
-import { EVENT_CONFIG, ConferenceSession } from "@/lib/event-config"
+import { EVENT_CONFIG, ConferenceSession, getSessionStatus, SessionStatus } from "@/lib/event-config"
 import { TTS_LANGUAGES } from "@/lib/languages"
 import { useSessions } from "@/hooks/use-sessions"
 
@@ -14,15 +14,51 @@ const TRACK_COLORS: Record<string, string> = {
   Panel: "#f59e0b",
 }
 
-function SessionCard({ session, language }: { session: ConferenceSession; language: string }) {
+function StatusBadge({ status }: { status: SessionStatus }) {
+  if (status === "live") return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-400">
+      <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+      Live
+    </span>
+  )
+  if (status === "ended") return (
+    <span className="inline-flex items-center rounded-full bg-[var(--color-baltic-sea-800)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-baltic-sea-400)]">
+      Ended
+    </span>
+  )
+  return (
+    <span className="inline-flex items-center rounded-full bg-[var(--color-baltic-sea-800)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-baltic-sea-300)]">
+      Upcoming
+    </span>
+  )
+}
+
+function SessionCard({ session, language, eventDay }: { session: ConferenceSession; language: string; eventDay: string }) {
   const trackColor = TRACK_COLORS[session.track || ""] || "var(--color-keppel-500)"
   const listenUrl = `/live/${session.id}/${language}`
+  const [status, setStatus] = useState<SessionStatus>(() => getSessionStatus(session, eventDay))
+
+  // Refresh status every 30s
+  useEffect(() => {
+    const id = setInterval(() => setStatus(getSessionStatus(session, eventDay)), 30_000)
+    return () => clearInterval(id)
+  }, [session, eventDay])
+
+  const timeRange = session.endTime
+    ? `${session.startTime} – ${session.endTime}`
+    : session.startTime
 
   return (
-    <div className="group flex flex-col gap-3 rounded-xl border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-900)] p-5 transition-all hover:border-[var(--color-keppel-500)] hover:-translate-y-0.5">
+    <div className={`group flex flex-col gap-3 rounded-xl border bg-[var(--color-baltic-sea-900)] p-5 transition-all hover:-translate-y-0.5 ${
+      status === "live"
+        ? "border-red-500/40 hover:border-red-400/60"
+        : status === "ended"
+        ? "border-[var(--color-baltic-sea-800)] opacity-60 hover:opacity-80 hover:border-[var(--color-baltic-sea-700)]"
+        : "border-[var(--color-baltic-sea-700)] hover:border-[var(--color-keppel-500)]"
+    }`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex flex-wrap items-center gap-2 mb-2">
             {session.track && (
               <span
                 className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
@@ -31,8 +67,9 @@ function SessionCard({ session, language }: { session: ConferenceSession; langua
                 {session.track}
               </span>
             )}
+            <StatusBadge status={status} />
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="h-3 w-3" /> {session.startTime}
+              <Clock className="h-3 w-3" /> {timeRange}
             </span>
           </div>
           <h3 className="font-semibold text-[var(--color-baltic-sea-50)] leading-snug">{session.name}</h3>
@@ -50,15 +87,23 @@ function SessionCard({ session, language }: { session: ConferenceSession; langua
       <div className="flex items-center justify-between pt-1">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Globe className="h-3.5 w-3.5 text-[var(--color-keppel-400)]" />
-          Listening in {TTS_LANGUAGES.find((l) => l.code === language)?.flag}{" "}
+          {TTS_LANGUAGES.find((l) => l.code === language)?.flag}{" "}
           {TTS_LANGUAGES.find((l) => l.code === language)?.name}
         </div>
-        <Link
-          href={listenUrl}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-keppel-500)] px-3 py-1.5 text-xs font-semibold text-[var(--color-keppel-950)] transition-colors hover:bg-[var(--color-keppel-400)]"
-        >
-          Join Live <ArrowRight className="h-3 w-3" />
-        </Link>
+        {status === "ended" ? (
+          <span className="text-xs text-[var(--color-baltic-sea-500)]">Session ended</span>
+        ) : (
+          <Link
+            href={listenUrl}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+              status === "live"
+                ? "bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                : "bg-[var(--color-keppel-500)] text-[var(--color-keppel-950)] hover:bg-[var(--color-keppel-400)]"
+            }`}
+          >
+            {status === "live" ? "Join Live" : "Join"} <ArrowRight className="h-3 w-3" />
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -91,9 +136,6 @@ export default function SessionsPage() {
             <h1 className="text-2xl font-bold tracking-tight">{EVENT_CONFIG.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Browse sessions and join any talk live in your language.
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground/70">
-              Sample schedule for demonstration — speakers and talks are illustrative.
             </p>
           </div>
           <Link
@@ -136,7 +178,7 @@ export default function SessionsPage() {
             <div className="py-12 text-center text-sm text-muted-foreground">No sessions match your search.</div>
           ) : (
             filtered.map((session) => (
-              <SessionCard key={session.id} session={session} language={language} />
+              <SessionCard key={session.id} session={session} language={language} eventDay={EVENT_CONFIG.eventDay} />
             ))
           )}
         </div>

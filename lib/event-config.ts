@@ -2,79 +2,108 @@ export interface ConferenceSession {
   id: string
   name: string
   speaker: string
-  startTime: string
+  startTime: string  // "HH:MM"
+  endTime?: string   // "HH:MM"
   track?: string
   description?: string
 }
 
 export const EVENT_CONFIG = {
-  name: "React Summit / JSNation 2026",
-  date: "June 11–12, 2026 · Amsterdam",
+  name:    process.env.NEXT_PUBLIC_EVENT_NAME    || "Tech Conference 2026",
+  date:    process.env.NEXT_PUBLIC_EVENT_DATE    || "June 2026 · Amsterdam",
+  // Date used to compute live/upcoming/ended status (YYYY-MM-DD, local tz)
+  eventDay: process.env.NEXT_PUBLIC_EVENT_DAY   || "2026-06-12",
   sessions: [
     {
-      id: "keynote",
-      name: "Keynote: React 20 and the Compiler Era",
-      speaker: "Andrew Clark · Meta",
-      startTime: "09:30",
+      id: "opening",
+      name: "Opening Keynote: The Next Era of Web Development",
+      speaker: "Alex Rivera · Principal Engineer",
+      startTime: "09:00",
+      endTime: "09:45",
       track: "Main Stage",
-      description: "What's coming in React 20 — the compiler, server actions, and the path to zero-bundle UI.",
+      description: "Where the web platform is headed — new primitives, new patterns, and what developers should be thinking about today.",
     },
     {
-      id: "server-components",
-      name: "Server Components in Production: Lessons from Scale",
-      speaker: "Delba de Oliveira · Vercel",
-      startTime: "10:15",
+      id: "session-1",
+      name: "Building at Scale: Lessons from Millions of Users",
+      speaker: "Jordan Kim · Staff Engineer",
+      startTime: "10:00",
+      endTime: "10:45",
       track: "Main Stage",
-      description: "Real-world patterns, pitfalls, and performance wins from shipping RSC at scale.",
+      description: "Real-world architecture decisions, trade-offs, and the hidden costs of scale.",
     },
     {
-      id: "ai-ux",
-      name: "Workshop: Building AI-Powered UX with React",
-      speaker: "Tejas Kumar · Gitpod",
+      id: "workshop-1",
+      name: "Workshop: Modern State Management Patterns",
+      speaker: "Sam Patel · Developer Advocate",
       startTime: "11:00",
+      endTime: "12:00",
       track: "Workshop",
-      description: "Hands-on workshop: streaming UI, generative components, and agentic patterns in React.",
+      description: "Hands-on deep dive into state primitives, derived state, and keeping complex UIs predictable.",
     },
     {
-      id: "signals",
-      name: "Signals vs. State: A Reactivity Deep Dive",
-      speaker: "Jason Miller · Google",
+      id: "session-2",
+      name: "Performance Without Compromise",
+      speaker: "Morgan Lee · Performance Engineer",
       startTime: "13:00",
+      endTime: "13:45",
       track: "Main Stage",
-      description: "Why fine-grained reactivity matters and what React can learn from Preact Signals.",
+      description: "Profiling techniques, rendering strategies, and practical wins you can ship this week.",
     },
     {
-      id: "panel",
-      name: "Panel: The Future of Open Source JavaScript",
-      speaker: "Ryan Dahl, Rich Harris, Evan You",
-      startTime: "14:30",
-      track: "Main Stage",
-      description: "Node, Deno, Bun, Vite — where is the JS ecosystem heading in 2027?",
+      id: "panel-1",
+      name: "Panel: Open Source in 2026 — What's Changed?",
+      speaker: "Casey Chen, Drew Santos, Avery Walsh",
+      startTime: "14:00",
+      endTime: "14:45",
+      track: "Panel",
+      description: "Three open-source maintainers on sustainability, governance, and the evolving relationship between companies and communities.",
     },
     {
-      id: "perf",
-      name: "Micro-Optimising React: What the Profiler Doesn't Show",
-      speaker: "Nadia Makarevich · AG Grid",
-      startTime: "15:30",
+      id: "session-3",
+      name: "AI-Augmented Development: Practical Patterns",
+      speaker: "Taylor Brooks · AI Platform Lead",
+      startTime: "15:00",
+      endTime: "15:45",
       track: "Main Stage",
-      description: "Hidden rendering costs, scheduler internals, and how to read a flame graph like a pro.",
+      description: "How AI tooling is changing the development loop — and where it still falls short.",
     },
     {
       id: "closing",
-      name: "Closing Keynote: JS at the Edge",
-      speaker: "Guillermo Rauch · Vercel",
-      startTime: "16:30",
+      name: "Closing Keynote: What We're Building Toward",
+      speaker: "Riley Nguyen · CTO",
+      startTime: "16:00",
+      endTime: "16:45",
       track: "Main Stage",
-      description: "Edge computing, AI inference at the CDN layer, and the next five years of the web.",
+      description: "A look at the trends converging over the next five years — and the open questions we still need to answer.",
     },
   ] as ConferenceSession[],
+}
+
+export type SessionStatus = "upcoming" | "live" | "ended"
+
+export function getSessionStatus(session: ConferenceSession, eventDay: string): SessionStatus {
+  const now = new Date()
+  const todayStr = now.toISOString().slice(0, 10)
+
+  if (todayStr < eventDay) return "upcoming"
+  if (todayStr > eventDay) return "ended"
+
+  // Same day — compare HH:MM
+  const pad = (s: string) => s.padStart(5, "0")
+  const nowHHMM = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`
+  const start = pad(session.startTime || "00:00")
+  const end = pad(session.endTime || session.startTime || "23:59")
+
+  if (nowHHMM < start) return "upcoming"
+  if (nowHHMM > end) return "ended"
+  return "live"
 }
 
 export function getSession(id: string): ConferenceSession | undefined {
   return EVENT_CONFIG.sessions.find((s) => s.id === id)
 }
 
-/** Fallback used when a listener joins a session id that isn't in the config. */
 export function getSessionOrFallback(id: string): ConferenceSession {
   return (
     getSession(id) ?? {
