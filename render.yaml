@@ -1,0 +1,45 @@
+services:
+  # Next.js app (frontend + REST API routes)
+  - type: web
+    name: unison-web
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    startCommand: corepack enable && pnpm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_QA_MODEL
+        sync: false
+      - key: OPENROUTER_SUMMARY_MODEL
+        sync: false
+      # Point the app at the WS service's public URL. These are inlined at
+      # build time, so set them to the unison-ws service URL and redeploy:
+      #   NEXT_PUBLIC_WS_URL    = wss://unison-ws.onrender.com
+      #   NEXT_PUBLIC_STATS_URL = https://unison-ws.onrender.com
+      - key: NEXT_PUBLIC_WS_URL
+        sync: false
+      - key: NEXT_PUBLIC_STATS_URL
+        sync: false
+
+  # WebSocket + HTTP server (realtime audio/translation pipeline + stats/CRUD)
+  - type: web
+    name: unison-ws
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
+    startCommand: ./node_modules/.bin/tsx server/index.ts
+    # The WS server has no "/" route; /stats always returns 200.
+    healthCheckPath: /stats
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
