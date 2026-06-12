@@ -9,25 +9,30 @@ graph LR
     Browser["Browser\n(Next.js client)"]
 
     subgraph "Next.js :3000"
-        UI["UI Pages\n/broadcast /sessions /room"]
+        UI["UI Pages\n/broadcast /live /sessions /organiser"]
         QA["/api/qa"]
         SUMMARY["/api/summary"]
+        SESS["/api/sessions"]
+        ORG["/api/organiser/*"]
         TTS_PREV["/api/tts-preview"]
     end
 
-    subgraph "WebSocket Server :8080"
-        WS["ws server\nserver/index.ts"]
+    subgraph "WebSocket + HTTP Server :8080"
+        WS["ws + http server\nserver/index.ts"]
         STT["STTService\nDeepgram Nova-2"]
         TR["TranslationService\nGoogle gtx"]
         TTS["TTSService\nDeepgram Aura-2"]
+        STORE["sessions.json\nstats / transcript / questions"]
     end
 
     Browser -- "HTTP / pages" --> UI
     Browser -- "REST" --> QA
     Browser -- "REST" --> SUMMARY
     Browser -- "REST" --> TTS_PREV
+    QA & SUMMARY & SESS & ORG -- "HTTP proxy" --> WS
     Browser -- "WebSocket\nbinary + JSON" --> WS
     WS --> STT --> TR --> TTS --> WS
+    WS --- STORE
 ```
 
 ---
@@ -39,10 +44,19 @@ flowchart TD
     CONN["New WS connection\n?role=..."]
     CONN --> R1{"role?"}
 
-    R1 -- "host" --> HOST["Broadcast host\nopen STT stream\nreceive PCM\nfan out to listeners"]
-    R1 -- "listener" --> LIST["Broadcast listener\nreceive translated PCM + transcript"]
-    R1 -- "member" --> MEM["Room member (audio)\nper-member STT\nbidirectional PCM"]
-    R1 -- "member-video" --> VID["Room member (video)\nJPEG frames fan-out"]
+    R1 -- "host" --> HOST["Broadcast host\nopen STT stream\nreceive PCM\nfan out to listeners\npush transcript to store"]
+    R1 -- "listener" --> LIST["Broadcast listener (?id=session&lang=)\nreceive translated PCM + transcript\ntracked for stats"]
+```
+
+The server also serves plain HTTP on the same port:
+
+```mermaid
+flowchart TD
+    HTTP["HTTP request"] --> P{"path?"}
+    P -- "GET /stats" --> S1["organiser analytics payload"]
+    P -- "GET /transcript" --> S2["recent transcript (Q&A grounding)"]
+    P -- "GET /questions · POST /question" --> S3["speaker question feed"]
+    P -- "GET|POST|PUT|DELETE /sessions" --> S4["session CRUD → data/sessions.json"]
 ```
 
 ---
