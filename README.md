@@ -125,15 +125,20 @@ The WS server also exposes plain HTTP endpoints (stats, transcript, questions, s
 
 ## Getting Started
 
+### 1. Clone and install
+
 ```bash
 git clone https://github.com/crypticsaiyan/Unison.git
 cd Unison
 pnpm install
 ```
 
-Create `.env`:
+### 2. Configure environment
+
+Create a `.env` file in the project root:
 
 ```env
+# Required
 DEEPGRAM_API_KEY=your_deepgram_api_key
 NEXT_PUBLIC_WS_URL=ws://localhost:8080
 NEXT_PUBLIC_STATS_URL=http://localhost:8080
@@ -145,16 +150,43 @@ OPENROUTER_QA_MODEL=openai/gpt-4o-mini
 OPENROUTER_SUMMARY_MODEL=anthropic/claude-sonnet-4
 ```
 
-Start both processes in separate terminals:
+Get a Deepgram key at [console.deepgram.com](https://console.deepgram.com).
+The OpenRouter key is optional; without it, Q&A and summaries return a
+friendly message instead of failing.
+
+> **Heads up:** an `OPENROUTER_API_KEY` exported in your shell overrides the
+> one in `.env`. `unset` it (or keep both in sync) before running.
+
+### 3. Run both processes
+
+Unison needs **two processes running at the same time**, in separate terminals:
 
 ```bash
-pnpm server   # WebSocket + HTTP server on :8080
-pnpm dev      # Next.js app on :3000
+# Terminal 1 — realtime WebSocket + HTTP server (:8080)
+pnpm server
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+```bash
+# Terminal 2 — Next.js app (:3000)
+pnpm dev
+```
 
-> **Note:** if you have an `OPENROUTER_API_KEY` exported in your shell, it overrides the one in `.env`. `unset` it (or keep them in sync) before running.
+Then open [http://localhost:3000](http://localhost:3000).
+
+### 4. Try it end to end
+
+1. Go to **[/broadcast](http://localhost:3000/broadcast)**, pick a session,
+   choose one or more target languages, and click **Start Session**. Allow
+   microphone access and start talking.
+2. Copy a **listener link** (one per target language) with the copy button.
+3. Open that link in a second tab or another device, on the same network, to
+   hear the live dubbed audio and read the transcript. Ask a question in your
+   language from the listener view.
+4. Open **[/organiser?key=demo](http://localhost:3000/organiser?key=demo)** to
+   watch reach, language distribution, and listeners-over-time update live.
+
+> No microphone handy? Set `ENABLE_DEBUG_ROUTES=1` in `.env` and seed the
+> transcript with `POST /debug/transcript` to exercise Q&A without speaking.
 
 ## Scripts
 
