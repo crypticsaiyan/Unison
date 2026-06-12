@@ -9,11 +9,13 @@ export function useSessions() {
   const [error, setError] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
+    setError(null)
+    setLoading(true)
     try {
       const res = await fetch("/api/sessions", { cache: "no-store" })
+      if (!res.ok) throw new Error(`${res.status}`)
       const data = await res.json()
       setSessions(data.sessions || [])
-      setError(null)
     } catch {
       setError("Failed to load sessions")
     } finally {

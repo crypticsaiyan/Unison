@@ -11,7 +11,7 @@ const NAV_LINKS = [
   { href: "/sessions", label: "Sessions" },
   { href: "/broadcast", label: "Broadcast" },
 
-  { href: "/organiser?key=demo", label: "Organiser" },
+  { href: "/organiser?key=demo", label: "Dashboard" },
 ]
 
 export function Header() {

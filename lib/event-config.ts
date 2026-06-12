@@ -4,15 +4,18 @@ export interface ConferenceSession {
   speaker: string
   startTime: string  // "HH:MM"
   endTime?: string   // "HH:MM"
+  date?: string      // "YYYY-MM-DD" — overrides eventDay for this session
   track?: string
   description?: string
 }
 
+// Fallback used when server is unavailable. Real config comes from /api/event-config.
 export const EVENT_CONFIG = {
-  name:    process.env.NEXT_PUBLIC_EVENT_NAME    || "Tech Conference 2026",
-  date:    process.env.NEXT_PUBLIC_EVENT_DATE    || "June 2026 · Amsterdam",
-  // Date used to compute live/upcoming/ended status (YYYY-MM-DD, local tz)
-  eventDay: process.env.NEXT_PUBLIC_EVENT_DAY   || "2026-06-12",
+  name: "Tech Conference 2026",
+  date: "June 2026 · Amsterdam",
+  eventDay: new Date().toISOString().slice(0, 10),
+  eventStart: new Date().toISOString().slice(0, 10),
+  eventEnd: new Date().toISOString().slice(0, 10),
   sessions: [
     {
       id: "opening",
@@ -85,9 +88,10 @@ export type SessionStatus = "upcoming" | "live" | "ended"
 export function getSessionStatus(session: ConferenceSession, eventDay: string): SessionStatus {
   const now = new Date()
   const todayStr = now.toISOString().slice(0, 10)
+  const day = session.date || eventDay
 
-  if (todayStr < eventDay) return "upcoming"
-  if (todayStr > eventDay) return "ended"
+  if (todayStr < day) return "upcoming"
+  if (todayStr > day) return "ended"
 
   // Same day — compare HH:MM
   const pad = (s: string) => s.padStart(5, "0")

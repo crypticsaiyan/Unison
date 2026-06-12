@@ -3,10 +3,23 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { DropDownList } from "@progress/kendo-react-dropdowns"
-import { Microphone, Globe, ArrowRight, Clock, GearSix } from "@phosphor-icons/react"
+import { Microphone, Globe, ArrowRight, Clock, CalendarPlus } from "@phosphor-icons/react"
 import { EVENT_CONFIG, ConferenceSession, getSessionStatus, SessionStatus } from "@/lib/event-config"
 import { TTS_LANGUAGES } from "@/lib/languages"
 import { useSessions } from "@/hooks/use-sessions"
+
+interface ServerEventConfig { name: string; date: string; eventDay: string; eventStart?: string; eventEnd?: string }
+
+function useEventConfig() {
+  const [config, setConfig] = useState<ServerEventConfig | null>(null)
+  useEffect(() => {
+    fetch("/api/event-config")
+      .then((r) => r.json())
+      .then((d) => setConfig(d))
+      .catch(() => setConfig(EVENT_CONFIG))
+  }, [])
+  return config
+}
 
 const TRACK_COLORS: Record<string, string> = {
   "Main Stage": "var(--color-keppel-500)",
@@ -33,13 +46,54 @@ function StatusBadge({ status }: { status: SessionStatus }) {
   )
 }
 
-function SessionCard({ session, language, eventDay }: { session: ConferenceSession; language: string; eventDay: string }) {
+
+function buildGoogleCalendarUrl(session: ConferenceSession, eventDay: string, listenUrl: string): string {
+  const toGCal = (day: string, hhmm: string) =>
+    day.replace(/-/g, "") + "T" + hhmm.replace(":", "") + "00"
+  const dates =
+    toGCal(eventDay, session.startTime || "00:00") +
+    "/" +
+    toGCal(eventDay, session.endTime || session.startTime || "01:00")
+  const origin = typeof window !== "undefined" ? window.location.origin : ""
+  const joinUrl = origin + listenUrl
+  const details =
+    session.speaker +
+    (session.description ? "\n\n" + session.description : "") +
+    `\n\nJoin session: ${joinUrl}`
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: session.name,
+    dates,
+    details,
+    location: joinUrl,
+    ...(session.track ? { trp: "false", sf: "true" } : {}),
+  })
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}
+
+function AddToCalendarButton({ session, eventDay, listenUrl }: { session: ConferenceSession; eventDay: string; listenUrl: string }) {
+  return (
+    <a
+      href={buildGoogleCalendarUrl(session, eventDay, listenUrl)}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Add to Google Calendar"
+      className="inline-flex items-center gap-1 rounded-lg border border-[var(--color-baltic-sea-700)] bg-transparent px-2.5 py-1.5 text-xs text-[var(--color-baltic-sea-300)] transition-colors hover:border-[var(--color-keppel-500)] hover:text-[var(--color-keppel-400)]"
+    >
+      <CalendarPlus className="h-3.5 w-3.5" />
+      Add to Calendar
+    </a>
+  )
+}
+
+function SessionCard({ session, language, eventDay }: { session: ConferenceSession; language: string; eventDay: string | null }) {
   const trackColor = TRACK_COLORS[session.track || ""] || "var(--color-keppel-500)"
   const listenUrl = `/live/${session.id}/${language}`
-  const [status, setStatus] = useState<SessionStatus>(() => getSessionStatus(session, eventDay))
+  const [status, setStatus] = useState<SessionStatus | null>(null)
 
-  // Refresh status every 30s
   useEffect(() => {
+    if (eventDay === null) return
+    setStatus(getSessionStatus(session, eventDay))
     const id = setInterval(() => setStatus(getSessionStatus(session, eventDay)), 30_000)
     return () => clearInterval(id)
   }, [session, eventDay])
@@ -67,7 +121,12 @@ function SessionCard({ session, language, eventDay }: { session: ConferenceSessi
                 {session.track}
               </span>
             )}
-            <StatusBadge status={status} />
+            {status !== null && <StatusBadge status={status} />}
+            {session.date && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <CalendarPlus className="h-3 w-3" /> {session.date}
+              </span>
+            )}
             <span className="flex items-center gap-1 text-xs text-muted-foreground">
               <Clock className="h-3 w-3" /> {timeRange}
             </span>
@@ -90,20 +149,25 @@ function SessionCard({ session, language, eventDay }: { session: ConferenceSessi
           {TTS_LANGUAGES.find((l) => l.code === language)?.flag}{" "}
           {TTS_LANGUAGES.find((l) => l.code === language)?.name}
         </div>
-        {status === "ended" ? (
-          <span className="text-xs text-[var(--color-baltic-sea-500)]">Session ended</span>
-        ) : (
-          <Link
-            href={listenUrl}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
-              status === "live"
-                ? "bg-red-500/20 text-red-300 hover:bg-red-500/30"
-                : "bg-[var(--color-keppel-500)] text-[var(--color-keppel-950)] hover:bg-[var(--color-keppel-400)]"
-            }`}
-          >
-            {status === "live" ? "Join Live" : "Join"} <ArrowRight className="h-3 w-3" />
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          {status === "upcoming" && eventDay !== null && (
+            <AddToCalendarButton session={session} eventDay={session.date ?? eventDay} listenUrl={listenUrl} />
+          )}
+          {status === null ? null : status === "ended" ? (
+            <span className="text-xs text-[var(--color-baltic-sea-500)]">Session ended</span>
+          ) : (
+            <Link
+              href={listenUrl}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                status === "live"
+                  ? "bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                  : "bg-[var(--color-keppel-500)] text-[var(--color-keppel-950)] hover:bg-[var(--color-keppel-400)]"
+              }`}
+            >
+              {status === "live" ? "Join Live" : "Join"} <ArrowRight className="h-3 w-3" />
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -112,14 +176,21 @@ function SessionCard({ session, language, eventDay }: { session: ConferenceSessi
 export default function SessionsPage() {
   const [language, setLanguage] = useState("en")
   const [search, setSearch] = useState("")
-  const { sessions, loading } = useSessions()
+  const { sessions, loading, error, refresh } = useSessions()
+  const eventConfig = useEventConfig()
 
-  const filtered = sessions.filter(
-    (s) =>
-      s.name.toLowerCase().includes(search.toLowerCase()) ||
-      s.speaker.toLowerCase().includes(search.toLowerCase()) ||
-      (s.description || "").toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = sessions
+    .filter(
+      (s) =>
+        s.name.toLowerCase().includes(search.toLowerCase()) ||
+        s.speaker.toLowerCase().includes(search.toLowerCase()) ||
+        (s.description || "").toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      const da = (a.date ?? eventConfig?.eventDay ?? "") + "T" + (a.startTime ?? "")
+      const db = (b.date ?? eventConfig?.eventDay ?? "") + "T" + (b.startTime ?? "")
+      return da.localeCompare(db)
+    })
 
   const langOptions = TTS_LANGUAGES.map((l) => ({ text: `${l.flag} ${l.name}`, value: l.code }))
   const selectedLang = langOptions.find((l) => l.value === language) || langOptions[0]
@@ -131,19 +202,13 @@ export default function SessionsPage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-keppel-400)]">
-              {EVENT_CONFIG.date}
+              {eventConfig?.date ?? ""}
             </p>
-            <h1 className="text-2xl font-bold tracking-tight">{EVENT_CONFIG.name}</h1>
+            <h1 className="text-2xl font-bold tracking-tight">{eventConfig?.name ?? ""}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Browse sessions and join any talk live in your language.
             </p>
           </div>
-          <Link
-            href="/sessions/manage"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-baltic-sea-700)] px-3 py-2 text-sm font-medium text-[var(--color-baltic-sea-100)] transition-colors hover:border-[var(--color-keppel-500)] hover:text-[var(--color-keppel-400)]"
-          >
-            <GearSix className="h-4 w-4" /> Manage
-          </Link>
         </div>
 
         {/* Controls */}
@@ -174,11 +239,18 @@ export default function SessionsPage() {
         <div className="space-y-4">
           {loading ? (
             <div className="py-12 text-center text-sm text-muted-foreground">Loading sessions…</div>
+          ) : error ? (
+            <div className="py-12 text-center">
+              <p className="text-sm text-destructive">{error}</p>
+              <button onClick={refresh} className="mt-3 text-xs text-[var(--color-keppel-400)] underline underline-offset-2 hover:text-[var(--color-keppel-300)]">
+                Retry
+              </button>
+            </div>
           ) : filtered.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">No sessions match your search.</div>
           ) : (
             filtered.map((session) => (
-              <SessionCard key={session.id} session={session} language={language} eventDay={EVENT_CONFIG.eventDay} />
+              <SessionCard key={session.id} session={session} language={language} eventDay={eventConfig?.eventDay ?? null} />
             ))
           )}
         </div>

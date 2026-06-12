@@ -231,7 +231,7 @@ export default function SessionListenerPage() {
 
           {/* Right Column: Q&A + Networking panel */}
           <div className="flex flex-col gap-6 lg:col-span-4">
-            <div className="flex-[3] min-h-[400px] rounded-2xl border border-[var(--color-baltic-sea-800)] bg-[var(--color-baltic-sea-900)]/50 backdrop-blur-sm shadow-lg overflow-hidden flex flex-col">
+            <div className="flex-1 min-h-[400px] rounded-2xl border border-[var(--color-baltic-sea-800)] bg-[var(--color-baltic-sea-900)]/50 backdrop-blur-sm shadow-lg overflow-hidden flex flex-col">
                <div className="p-4 border-b border-[var(--color-baltic-sea-800)] bg-black/20 flex items-center gap-2">
                 <h3 className="font-semibold text-sm">Audience Q&A</h3>
               </div>
@@ -240,11 +240,11 @@ export default function SessionListenerPage() {
               </div>
             </div>
             
-            <div className="flex-[2] min-h-[250px] rounded-2xl border border-[var(--color-baltic-sea-800)] bg-[var(--color-baltic-sea-900)]/50 backdrop-blur-sm shadow-lg overflow-hidden flex flex-col">
+            <div className="shrink-0 rounded-2xl border border-[var(--color-baltic-sea-800)] bg-[var(--color-baltic-sea-900)]/50 backdrop-blur-sm shadow-lg overflow-hidden flex flex-col">
               <div className="p-4 border-b border-[var(--color-baltic-sea-800)] bg-black/20 flex items-center gap-2">
                 <h3 className="font-semibold text-sm">Networking</h3>
               </div>
-              <div className="flex-1 overflow-hidden">
+              <div className="max-h-[320px] overflow-y-auto">
                 <AttendeeNetworking sessionId={sessionId} language={langCode} />
               </div>
             </div>
