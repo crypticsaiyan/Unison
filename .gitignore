@@ -43,3 +43,7 @@ scripts/test-*.mjs
 
 # Local agent guidance
 CLAUDE.md
+
+# Kendo / Telerik license key (use KENDO_UI_LICENSE env in CI)
+telerik-license.txt
+kendo-ui-license.txt

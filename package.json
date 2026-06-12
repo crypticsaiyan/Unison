@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.9",
   "scripts": {
-    "build": "next build",
+    "build": "kendo-ui-license activate --ignore-no-license && next build",
     "dev": "next dev",
     "lint": "eslint .",
     "start": "next start",
@@ -74,5 +74,10 @@
     "typescript": "^5",
     "vitest": "^4.1.8"
   },
-  "overrides": {}
+  "overrides": {},
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@progress/kendo-licensing"
+    ]
+  }
 }
