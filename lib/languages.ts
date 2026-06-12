@@ -15,7 +15,7 @@ export const TTS_LANGUAGES: LanguageOption[] = [
   { code: "ja", name: "Japanese", flag: "🇯🇵" },
 ]
 
-// Source Languages (Deepgram Nova-3 STT support)
+// Source Languages (Deepgram Nova-2 STT support)
 export const STT_LANGUAGES: LanguageOption[] = [
   { code: "auto", name: "Auto-detect", flag: "🌐" },
   { code: "en", name: "English", flag: "🇺🇸" },

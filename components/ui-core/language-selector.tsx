@@ -84,7 +84,7 @@ export const VOICE_OPTIONS: Record<string, { id: string; name: string; gender: '
   ],
 }
 
-// Source Languages (Deepgram Nova-3)
+// Source Languages (Deepgram Nova-2)
 const STT_LANGUAGES = [
   { code: "auto", name: "Auto-detect", flag: "🌐" },
   { code: "en", name: "English", flag: "🇺🇸" },

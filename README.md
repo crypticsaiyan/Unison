@@ -39,7 +39,7 @@ At a global conference, most of the room hears a talk in a language that isn't t
 **Highlights:**
 
 - Real-time speech → translation → neural voice pipeline with ~3s end-to-end latency
-- Deepgram Nova-2 streaming STT and Aura-2 neural TTS (native voices for EN, ES, FR, DE, IT, JA, NL)
+- Deepgram Nova-2 streaming STT (auto-detect plus 15 source languages) and Aura-2 neural TTS (native voices for EN, ES, FR, DE, IT, JA, NL)
 - Google Translate with an LRU cache and in-flight request deduplication
 - AI-powered attendee Q&A, grounded strictly in the live transcript, via OpenRouter
 - Auto-generated post-talk summaries (key takeaways, technologies, code snippets)
@@ -78,7 +78,7 @@ The WS server also exposes plain HTTP endpoints (stats, transcript, questions, s
 - **App**: Next.js 16, React 19, TypeScript
 - **UI**: Tailwind CSS v4, **Kendo UI for React** (DropDownList, Grid, Charts, Gauges, ListView, Chat, Dialog, Window, Indicators, Notification, ProgressBar, Tooltip), Radix primitives, Phosphor Icons, cobe
 - **Realtime**: Node.js, `ws`, browser Web Audio APIs
-- **STT**: Deepgram Nova-2 streaming
+- **STT**: Deepgram Nova-2 streaming (auto-detect plus 15 source languages)
 - **Translation**: Google Translate `gtx` endpoint with LRU cache
 - **TTS**: Deepgram Aura-2 (persistent `speak.live` WebSocket + REST fallback)
 - **AI**: OpenRouter (Q&A answers + post-talk summaries)

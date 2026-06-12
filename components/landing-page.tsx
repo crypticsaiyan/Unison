@@ -160,9 +160,9 @@ export function LandingPage() {
         <section className="border-b border-[var(--color-baltic-sea-800)] bg-[var(--color-baltic-sea-950)]">
           <div className="mx-auto grid max-w-[1400px] grid-cols-2 gap-px overflow-hidden px-4 sm:px-6 lg:grid-cols-4 lg:px-12">
             {[
-              { stat: "15+", label: "languages, live" },
+              { stat: "7", label: "languages dubbed live" },
+              { stat: "15+", label: "source languages" },
               { stat: "~3s", label: "speech-to-dub latency" },
-              { stat: "100%", label: "of the room included" },
               { stat: "2-way", label: "audience Q&A loop" },
             ].map((item) => (
               <div
@@ -248,7 +248,7 @@ export function LandingPage() {
           <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12">
             <div className="mb-14 max-w-2xl">
               <p className="text-sm font-medium uppercase tracking-wide text-[var(--color-keppel-400)]">
-                One platform, four surfaces
+                One platform, every role
               </p>
               <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-baltic-sea-50)] sm:text-3xl">
                 Built for speakers, attendees and organisers.
