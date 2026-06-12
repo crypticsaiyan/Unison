@@ -72,7 +72,7 @@ At a global conference, most of the room hears a talk in a language that isn't t
 ### Organiser Dashboard
 
 <!-- ─────────────────────────────────────────────────────────────────────────
-     SCREENSHOT: organiser dashboard — replace with a fresh capture of
+     SCREENSHOT: organiser dashboard, replace with a fresh capture of
      /organiser?key=demo showing the reach gauge, donut, and line chart.
      ───────────────────────────────────────────────────────────────────────── -->
 <div align="center">

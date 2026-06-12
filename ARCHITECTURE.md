@@ -13,6 +13,7 @@ graph LR
         QA["/api/qa"]
         SUMMARY["/api/summary"]
         SESS["/api/sessions"]
+        EVT["/api/event-config"]
         ORG["/api/organiser/*"]
         TTS_PREV["/api/tts-preview"]
     end
@@ -29,7 +30,7 @@ graph LR
     Browser -- "REST" --> QA
     Browser -- "REST" --> SUMMARY
     Browser -- "REST" --> TTS_PREV
-    QA & SUMMARY & SESS & ORG -- "HTTP proxy" --> WS
+    QA & SUMMARY & SESS & EVT & ORG -- "HTTP proxy" --> WS
     Browser -- "WebSocket\nbinary + JSON" --> WS
     WS --> STT --> TR --> TTS --> WS
     WS --- STORE
@@ -57,6 +58,7 @@ flowchart TD
     P -- "GET /transcript" --> S2["recent transcript (Q&A grounding)"]
     P -- "GET /questions · POST /question" --> S3["speaker question feed"]
     P -- "GET|POST|PUT|DELETE /sessions" --> S4["session CRUD → data/sessions.json"]
+    P -- "GET|PUT /event-config" --> S5["event details store"]
 ```
 
 ---
@@ -100,7 +102,7 @@ sequenceDiagram
 
 ---
 
-## TTS Service — Persistent WebSocket Pool
+## TTS Service: Persistent WebSocket Pool
 
 Each voice model gets one persistent `SpeakLiveClient` connection. `sendText()` + `flush()` streams audio chunks back via `LiveTTSEvents.Audio`, eliminating per-sentence HTTP round-trips.
 
@@ -151,11 +153,43 @@ flowchart TD
 
 ---
 
+## Organiser Stats Lifecycle
+
+Stats survive a talk ending so the dashboard keeps showing real numbers
+instead of falling back to demo data. A per-session aggregate (offered
+languages, served languages, ended flag) persists after the host
+disconnects; peak and history are kept in their own maps.
+
+```mermaid
+flowchart TD
+    SAMPLE["every 5s: sample live broadcasts"]
+    SAMPLE --> HIST["push count to historyBySession"]
+    SAMPLE --> PEAK["update peakBySession"]
+    SAMPLE --> AGG["record served + offered langs"]
+
+    END["host disconnects"] --> MARK["sessionAgg.ended = true"]
+    MARK --> ZERO["push one trailing 0 to history"]
+
+    BUILD["buildStats()"] --> UNION["live broadcasts ∪ ended sessions"]
+    UNION --> STATUS["status: live if count>0 else ended"]
+    UNION --> REACH["reach = served langs / offered langs"]
+```
+
+Reach is a language-coverage ratio (distinct languages that had a
+listener over distinct languages the host offered), not a hardcoded
+100%. Ended sessions keep their real peak and frozen history curve.
+
+---
+
 ## Environment Variables
 
 | Variable | Purpose |
 |----------|---------|
 | `DEEPGRAM_API_KEY` | STT and TTS |
 | `NEXT_PUBLIC_WS_URL` | WebSocket server address |
+| `NEXT_PUBLIC_STATS_URL` | WS server HTTP base for organiser/session APIs |
 | `PORT` / `WEBSOCKET_PORT` | WS listening port (default 8080) |
 | `OPENROUTER_API_KEY` | AI Q&A and session summaries |
+| `OPENROUTER_QA_MODEL` | Q&A model slug (default `openai/gpt-4o-mini`) |
+| `OPENROUTER_SUMMARY_MODEL` | Summary model slug (default `anthropic/claude-sonnet-4`) |
+| `ENABLE_DEBUG_ROUTES` | Set `1` to enable `POST /debug/transcript` |
