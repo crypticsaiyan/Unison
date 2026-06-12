@@ -29,6 +29,9 @@ import type { ConferenceSession } from "@/lib/event-config"
 
 const ACCESS_KEY = "demo"
 const KEPPEL = ["#3fbfb0", "#5fd0c2", "#2f9e91", "#8fe0d6", "#1f6b63", "#b9ece5"]
+// Distinct hues for the per-session line chart so overlapping sessions are
+// easy to tell apart (the teal KEPPEL shades are too similar for this).
+const LINE_COLORS = ["#3fbfb0", "#f59e0b", "#8b5cf6", "#ec4899", "#60a5fa", "#84cc16", "#f43f5e", "#14b8a6"]
 
 interface Stats {
   totalListeners: number
@@ -196,6 +199,12 @@ export default function OrganiserDashboard() {
       .join(" · ")
   }, [stats])
 
+  // Show at most ~10 x-axis labels so they don't overlap as history grows.
+  const lineLabelStep = useMemo(() => {
+    const maxLen = Math.max(0, ...(stats?.listenersBySession.map((s) => s.history.length) || [0]))
+    return Math.max(1, Math.ceil(maxLen / 10))
+  }, [stats])
+
   const lineCategories = useMemo(() => {
     const maxLen = Math.max(0, ...(stats?.listenersBySession.map((s) => s.history.length) || [0]))
     return Array.from({ length: maxLen }, (_, i) => `-${(maxLen - i - 1) * 5}s`)
@@ -337,18 +346,29 @@ export default function OrganiserDashboard() {
           <div className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <ChartLine className="h-4 w-4 text-[var(--color-keppel-400)]" /> Listeners over time
           </div>
-          <Chart style={{ height: 260 }} seriesColors={KEPPEL}>
+          <Chart style={{ height: 260 }} seriesColors={LINE_COLORS}>
             <ChartTitle text="" />
             <ChartLegend position="bottom" />
             <ChartCategoryAxis>
-              <ChartCategoryAxisItem categories={lineCategories} />
+              <ChartCategoryAxisItem
+                categories={lineCategories}
+                labels={{ step: lineLabelStep, rotation: "auto" }}
+                majorTicks={{ step: lineLabelStep }}
+                majorGridLines={{ step: lineLabelStep }}
+              />
             </ChartCategoryAxis>
             <ChartValueAxis>
               <ChartValueAxisItem min={0} />
             </ChartValueAxis>
             <ChartSeries>
-              {stats?.listenersBySession.map((s) => (
-                <ChartSeriesItem key={s.sessionId} type="line" data={s.history} name={s.name} />
+              {stats?.listenersBySession.map((s, i) => (
+                <ChartSeriesItem
+                  key={s.sessionId}
+                  type="line"
+                  data={s.history}
+                  name={s.name}
+                  color={LINE_COLORS[i % LINE_COLORS.length]}
+                />
               ))}
             </ChartSeries>
           </Chart>
