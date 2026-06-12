@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/logo-square.png" alt="Unison" width="96" height="96" />
+  <img src="public/logo.svg" alt="Unison" width="96" height="96" />
 
   # Unison
 
@@ -19,18 +19,11 @@ Unison is **conference inclusion infrastructure**. A speaker talks on stage in t
 
 Built with **Kendo UI for React** across the entire attendee and organiser experience.
 
-<!-- ─────────────────────────────────────────────────────────────────────────
-     SCREENSHOT: landing / hero
-     ───────────────────────────────────────────────────────────────────────── -->
 <div align="center">
-  <img src="public/landing.png" alt="Unison landing page" width="100%" />
+  <img src="public/unison.png" alt="Unison" width="100%" />
 </div>
 
 ## The Problem
-
-<div align="center">
-  <img src="public/problem.png" alt="The inclusion gap at global conferences" width="100%" />
-</div>
 
 At a global conference, most of the room hears a talk in a language that isn't their first. Slides translate; speakers don't. Unison closes that gap instantly, for everyone, without interrupting the speaker.
 
@@ -54,31 +47,6 @@ At a global conference, most of the room hears a talk in a language that isn't t
 - Organiser analytics on Kendo Charts, Gauges and Grid: real ended-session stats (peak + history retained after a talk ends) and language-coverage reach
 - Configurable event details and inline session management, persisted server-side
 - Rotating dotted-globe landing page (cobe / WebGL)
-
-## Screenshots
-
-### Live Broadcast (Speaker)
-
-<div align="center">
-  <img src="public/broadcast.png" alt="Broadcast / speaker surface" width="100%" />
-</div>
-
-### Attendee View
-
-<div align="center">
-  <img src="public/room.png" alt="Attendee listener view" width="100%" />
-</div>
-
-### Organiser Dashboard
-
-<!-- ─────────────────────────────────────────────────────────────────────────
-     SCREENSHOT: organiser dashboard, replace with a fresh capture of
-     /organiser?key=demo showing the reach gauge, donut, and line chart.
-     ───────────────────────────────────────────────────────────────────────── -->
-<div align="center">
-  <!-- TODO: add public/organiser.png and reference it here -->
-  <img src="public/vod.png" alt="Organiser analytics dashboard" width="100%" />
-</div>
 
 ## How It Works
 
