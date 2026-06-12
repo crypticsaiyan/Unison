@@ -1,5 +1,9 @@
 # Unison Architecture
 
+<div align="center">
+  <img src="public/arch.svg" alt="Unison architecture diagram" width="100%" />
+</div>
+
 ## System Overview
 
 Two processes run simultaneously:
