@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
-import { MicController } from "@/components/ui-core/mic-controller"
+import { useState, useCallback, useEffect, useRef } from "react"
+import { MicController, MicControllerHandle } from "@/components/ui-core/mic-controller"
 import { LanguageSelector } from "@/components/ui-core/language-selector"
 import { TranscriptView, TranscriptEntry } from "@/components/ui-core/transcript-view"
 import { Button } from "@/components/ui/button"
-import { WebcamBroadcaster } from "@/components/ui-core/webcam-broadcaster"
+import { WebcamBroadcaster, WebcamBroadcasterHandle } from "@/components/ui-core/webcam-broadcaster"
 import { SpeakerQuestions } from "@/components/ui-core/speaker-questions"
 import { SummaryWindow } from "@/components/ui-core/summary-window"
 import { QrShareButton } from "@/components/ui-core/qr-share"
@@ -26,29 +26,74 @@ import {
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080"
 
+const SETTINGS_KEY = "unison.broadcast.settings"
+
+interface PersistedSettings {
+  sessionId?: string
+  sourceLanguage?: string
+  targetLanguages?: string[]
+  targetVoices?: Record<string, string>
+}
+
+function loadSettings(): PersistedSettings {
+  if (typeof window === "undefined") return {}
+  try {
+    return JSON.parse(window.localStorage.getItem(SETTINGS_KEY) || "{}")
+  } catch {
+    return {}
+  }
+}
+
 export default function AppPage() {
   const { sessions: allSessions } = useSessions()
+  // Read any persisted settings once, synchronously, so the first render uses them.
+  const initialSettings = useRef<PersistedSettings>(loadSettings())
   const [session, setSession] = useState<ConferenceSession>(EVENT_CONFIG.sessions[0])
   const broadcastId = session.id
-  const [sourceLanguage, setSourceLanguage] = useState("auto")
-  const [targetLanguages, setTargetLanguages] = useState<string[]>(["es"])
-  const [targetVoices, setTargetVoices] = useState<Record<string, string>>({})
+  const [sourceLanguage, setSourceLanguage] = useState(initialSettings.current.sourceLanguage ?? "auto")
+  const [targetLanguages, setTargetLanguages] = useState<string[]>(initialSettings.current.targetLanguages ?? ["es"])
+  const [targetVoices, setTargetVoices] = useState<Record<string, string>>(initialSettings.current.targetVoices ?? {})
   const [isRecording, setIsRecording] = useState(false)
   const [broadcastValidationError, setBroadcastValidationError] = useState<string | null>(null)
   const [transcripts, setTranscripts] = useState<TranscriptEntry[]>([])
   const [partialTranscript, setPartialTranscript] = useState<{ original: string; translated?: string } | undefined>()
   const [showSummary, setShowSummary] = useState(false)
+  const micRef = useRef<MicControllerHandle>(null)
+  const webcamRef = useRef<WebcamBroadcasterHandle>(null)
 
   const handleTranscript = useCallback((entry: TranscriptEntry) => {
     setTranscripts(prev => [...prev, entry])
     setPartialTranscript(undefined)
   }, [])
 
-  // Keep the selected session in sync with the managed list once it loads.
+  // Keep the selected session in sync with the managed list once it loads,
+  // preferring the last-used session id from persisted settings.
   useEffect(() => {
     if (allSessions.length === 0) return
-    setSession((cur) => allSessions.find((s) => s.id === cur.id) || allSessions[0])
+    const preferredId = initialSettings.current.sessionId
+    setSession((cur) => {
+      const wanted = preferredId ?? cur.id
+      return allSessions.find((s) => s.id === wanted) || allSessions.find((s) => s.id === cur.id) || allSessions[0]
+    })
+    // Only honor the persisted id on the first resolution.
+    initialSettings.current.sessionId = undefined
   }, [allSessions])
+
+  // Persist settings whenever they change so a reload restores them.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const payload: PersistedSettings = {
+      sessionId: session.id,
+      sourceLanguage,
+      targetLanguages,
+      targetVoices,
+    }
+    try {
+      window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(payload))
+    } catch {
+      /* storage may be unavailable (private mode) — ignore */
+    }
+  }, [session.id, sourceLanguage, targetLanguages, targetVoices])
 
   const handlePartialTranscript = useCallback((partial: { original: string; translated?: string }) => {
     setPartialTranscript(partial)
@@ -104,6 +149,25 @@ export default function AppPage() {
   }, [disconnect])
 
   const handleMicAudioData = useCallback((chunk: ArrayBuffer) => sendAudio(chunk), [sendAudio])
+
+  const handleStartSession = useCallback(() => {
+    if (targetLanguages.length === 0) {
+      setBroadcastValidationError("Please select at least one target language")
+      return
+    }
+    micRef.current?.start()
+  }, [targetLanguages])
+
+  const handleEndSession = useCallback(() => {
+    const hadTranscripts = transcripts.length > 0
+    // Always tear down the mic + socket, regardless of the mic controller's internal state.
+    micRef.current?.stop()
+    webcamRef.current?.stop()
+    handleStop()
+    if (hadTranscripts) {
+      setShowSummary(true)
+    }
+  }, [transcripts, handleStop])
 
   const handleDownloadSRT = useCallback(() => {
     if (transcripts.length === 0) return;
@@ -202,12 +266,14 @@ export default function AppPage() {
                 {/* Col 1: Video + Mic */}
                 <div className="space-y-6">
                   <WebcamBroadcaster
+                    ref={webcamRef}
                     wsUrl={WS_URL}
                     broadcastId={broadcastId}
                     canStart={targetLanguages.length > 0}
                     blockedReason="Please select at least one target language"
                   />
                   <MicController
+                    ref={micRef}
                     isRecording={isRecording}
                     onStart={handleStart}
                     onStop={handleStop}
@@ -216,6 +282,24 @@ export default function AppPage() {
                     canStart={targetLanguages.length > 0}
                     blockedReason="Please select at least one target language"
                   />
+                  {isRecording ? (
+                    <Button
+                      variant="destructive"
+                      className="w-full"
+                      onClick={handleEndSession}
+                    >
+                      End Session
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="default"
+                      className="w-full"
+                      onClick={handleStartSession}
+                      disabled={connectionStatus === "connecting"}
+                    >
+                      Start Session
+                    </Button>
+                  )}
                 </div>
 
                 {/* Col 2: Transcript */}
@@ -233,10 +317,10 @@ export default function AppPage() {
                            <DownloadSimple className="h-4 w-4" /> Download .SRT
                        </Button>
                        <Button
-                           variant="default"
+                           variant="destructive"
                            size="sm"
-                           disabled={transcripts.length === 0}
-                           onClick={() => setShowSummary(true)}
+                           disabled={!isRecording && transcripts.length === 0}
+                           onClick={handleEndSession}
                        >
                            End Session
                        </Button>

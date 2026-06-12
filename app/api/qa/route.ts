@@ -37,15 +37,16 @@ async function recordQuestion(sessionId: string, text: string, lang: string) {
 }
 
 export async function POST(request: Request) {
+  let lang = "en"
   try {
     const { question, language, sessionId } = await request.json()
+    lang = language || "en"
 
     if (!question || !sessionId) {
       return NextResponse.json({ answer: "Please type a question first." }, { status: 200 })
     }
 
     // 1. Translate the question to English for grounding + speaker feed.
-    const lang = language || "en"
     const questionEn = lang === "en" ? question : await translator.translate(question, lang, "en")
 
     // 2. Surface to speaker view (best-effort, fire and forget).
@@ -87,11 +88,22 @@ ${questionEn}
 
 Answer in 2-3 sentences maximum.`
 
-    const answerEn = await generateText({
-      prompt,
-      model: QA_MODEL,
-      maxTokens: 700,
-    })
+    let answerEn: string
+    try {
+      answerEn = await generateText({
+        prompt,
+        model: QA_MODEL,
+        maxTokens: 700,
+      })
+    } catch (llmErr) {
+      // LLM unavailable (rate limit, empty response, timeout). Degrade gracefully
+      // with a friendly message in the attendee's language instead of a 500-style error.
+      console.error("[/api/qa] LLM error:", llmErr)
+      const msg = "The Q&A assistant is busy right now. Please try asking again in a moment."
+      return NextResponse.json({
+        answer: lang === "en" ? msg : await translator.translate(msg, "en", lang),
+      })
+    }
 
     // 5. Translate answer back into the attendee's language.
     const answer = lang === "en" ? answerEn : await translator.translate(answerEn, "en", lang)
@@ -99,9 +111,11 @@ Answer in 2-3 sentences maximum.`
     return NextResponse.json({ answer, answerEn, questionEn })
   } catch (e) {
     console.error("[/api/qa] error:", e)
-    return NextResponse.json(
-      { answer: "Something went wrong answering that. Please try again." },
-      { status: 200 }
-    )
+    const msg = "Something went wrong answering that. Please try again."
+    let answer = msg
+    if (lang !== "en") {
+      try { answer = await translator.translate(msg, "en", lang) } catch { /* keep english */ }
+    }
+    return NextResponse.json({ answer }, { status: 200 })
   }
 }

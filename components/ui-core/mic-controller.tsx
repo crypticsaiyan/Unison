@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -16,7 +16,12 @@ interface MicControllerProps {
   blockedReason?: string
 }
 
-export function MicController({
+export interface MicControllerHandle {
+  start: () => void
+  stop: () => void
+}
+
+export const MicController = forwardRef<MicControllerHandle, MicControllerProps>(function MicController({
   isRecording,
   onStart,
   onStop,
@@ -24,7 +29,7 @@ export function MicController({
   connectionStatus,
   canStart = true,
   blockedReason,
-}: MicControllerProps) {
+}, ref) {
   const [audioLevel, setAudioLevel] = useState(0)
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null)
   
@@ -138,6 +143,18 @@ export function MicController({
     cleanup()
     onStop()
   }, [cleanup, onStop])
+
+  // Expose imperative start/stop so a parent "Start/End Session" control can drive the mic.
+  useImperativeHandle(ref, () => ({
+    start: () => {
+      if (!isRecording && canStart) {
+        startRecording()
+      }
+    },
+    stop: () => {
+      stopRecording()
+    },
+  }), [isRecording, canStart, startRecording, stopRecording])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -259,4 +276,4 @@ export function MicController({
       </CardContent>
     </Card>
   )
-}
+})

@@ -77,6 +77,10 @@ export default function SessionListenerPage() {
   useEffect(() => {
     if (!hasJoined) return
 
+    if (wsRef.current) {
+      wsRef.current.close()
+      wsRef.current = null
+    }
     const wsUrl = `${WS_URL}?role=listener&id=${sessionId}&lang=${langCode}`
     const ws = new WebSocket(wsUrl)
     ws.binaryType = "arraybuffer"
@@ -95,7 +99,21 @@ export default function SessionListenerPage() {
         const data = JSON.parse(event.data)
         if (data.type === "transcript") {
           setIsWaiting(false)
-          setMessages((prev) => [...prev, data])
+          setMessages((prev) => {
+            // deduplicate: skip if same timestamp+original already present
+            if (prev.some((m) => m.timestamp === data.timestamp && m.original === data.original)) return prev
+            return [...prev, data]
+          })
+        } else if (data.type === "info") {
+          // Broadcast lifecycle signals from the server.
+          const msg = (data.message || "").toLowerCase()
+          if (msg.includes("ended")) {
+            // Host stopped — drop back to the waiting state.
+            setIsWaiting(true)
+          } else {
+            // "Connected to live broadcast." / "Broadcast has started!"
+            setIsWaiting(false)
+          }
         } else if (data.type === "tts-start") {
           ttsMetaRef.current = { sampleRate: data.sampleRate ?? 24000 }
         } else if (data.type === "tts-end") {

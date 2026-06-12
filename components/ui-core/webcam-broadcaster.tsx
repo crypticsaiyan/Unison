@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { VideoCamera, VideoCameraSlash } from "@phosphor-icons/react"
@@ -12,7 +12,11 @@ interface WebcamBroadcasterProps {
   blockedReason?: string
 }
 
-export function WebcamBroadcaster({ wsUrl, broadcastId, canStart = true, blockedReason }: WebcamBroadcasterProps) {
+export interface WebcamBroadcasterHandle {
+  stop: () => void
+}
+
+export const WebcamBroadcaster = forwardRef<WebcamBroadcasterHandle, WebcamBroadcasterProps>(function WebcamBroadcaster({ wsUrl, broadcastId, canStart = true, blockedReason }, ref) {
   const [isActive, setIsActive] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
@@ -137,6 +141,11 @@ export function WebcamBroadcaster({ wsUrl, broadcastId, canStart = true, blocked
      return () => stopBroadcast()
   }, [stopBroadcast])
 
+  // Expose imperative stop so the parent "End Session" control can shut the camera off.
+  useImperativeHandle(ref, () => ({
+    stop: () => stopBroadcast(),
+  }), [stopBroadcast])
+
   return (
     <Card className="w-full">
        <CardHeader className="pb-3">
@@ -192,4 +201,4 @@ export function WebcamBroadcaster({ wsUrl, broadcastId, canStart = true, blocked
        </CardContent>
     </Card>
   )
-}
+})

@@ -8,8 +8,9 @@ const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 // Default models (override per call). OpenRouter model slugs.
-export const QA_MODEL = process.env.OPENROUTER_QA_MODEL || "meta-llama/llama-3.2-3b-instruct:free"
-export const SUMMARY_MODEL = process.env.OPENROUTER_SUMMARY_MODEL || "meta-llama/llama-3.3-70b-instruct:free"
+// Paid models — far more reliable than the rate-limited `:free` tiers.
+export const QA_MODEL = process.env.OPENROUTER_QA_MODEL || "openai/gpt-4o-mini"
+export const SUMMARY_MODEL = process.env.OPENROUTER_SUMMARY_MODEL || "anthropic/claude-3.5-sonnet"
 
 export function hasLLM(): boolean {
   return Boolean(OPENROUTER_API_KEY)
