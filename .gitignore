@@ -40,3 +40,6 @@ scripts/test-*.mjs
 
 # Runtime session store
 /data/
+
+# Local agent guidance
+CLAUDE.md

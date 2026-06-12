@@ -17,7 +17,7 @@
 
 Unison is **conference inclusion infrastructure**. A speaker talks on stage in their language; every attendee hears and reads the talk in their own, live, with no hardware, no app install, and no human interpreters. Attendees can ask questions in their native language and the speaker receives them in English, closing a two-way loop.
 
-Built for the **Progress x GitNation Hackathon** with Kendo UI for React across the entire attendee and organiser experience.
+Built with **Kendo UI for React** across the entire attendee and organiser experience.
 
 <!-- ─────────────────────────────────────────────────────────────────────────
      SCREENSHOT: landing / hero
