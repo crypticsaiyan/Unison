@@ -21,7 +21,9 @@ import {
   Lightning,
   Waveform,
   Globe,
-  DownloadSimple
+  DownloadSimple,
+  Copy,
+  Check
 } from "@phosphor-icons/react"
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080"
@@ -58,6 +60,7 @@ export default function AppPage() {
   const [transcripts, setTranscripts] = useState<TranscriptEntry[]>([])
   const [partialTranscript, setPartialTranscript] = useState<{ original: string; translated?: string } | undefined>()
   const [showSummary, setShowSummary] = useState(false)
+  const [copiedLang, setCopiedLang] = useState<string | null>(null)
   const micRef = useRef<MicControllerHandle>(null)
   const webcamRef = useRef<WebcamBroadcasterHandle>(null)
 
@@ -150,6 +153,13 @@ export default function AppPage() {
 
   const handleMicAudioData = useCallback((chunk: ArrayBuffer) => sendAudio(chunk), [sendAudio])
 
+  const handleCopyLink = useCallback((lang: string) => {
+    const url = `${window.location.origin}/live/${broadcastId}/${lang}`
+    navigator.clipboard.writeText(url)
+    setCopiedLang(lang)
+    setTimeout(() => setCopiedLang((c) => (c === lang ? null : c)), 1500)
+  }, [broadcastId])
+
   const handleStartSession = useCallback(() => {
     if (targetLanguages.length === 0) {
       setBroadcastValidationError("Please select at least one target language")
@@ -159,15 +169,14 @@ export default function AppPage() {
   }, [targetLanguages])
 
   const handleEndSession = useCallback(() => {
-    const hadTranscripts = transcripts.length > 0
     // Always tear down the mic + socket, regardless of the mic controller's internal state.
     micRef.current?.stop()
     webcamRef.current?.stop()
     handleStop()
-    if (hadTranscripts) {
-      setShowSummary(true)
-    }
-  }, [transcripts, handleStop])
+    // Always open the summary window. It handles the "not enough transcript"
+    // case itself, so the speaker always gets visible feedback.
+    setShowSummary(true)
+  }, [handleStop])
 
   const handleDownloadSRT = useCallback(() => {
     if (transcripts.length === 0) return;
@@ -197,7 +206,7 @@ export default function AppPage() {
               <div className="w-full rounded-xl border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-900)] p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Globe className="h-4 w-4 text-[var(--color-keppel-400)]" />
-                  <span className="text-sm font-medium">Conference Session — {EVENT_CONFIG.name}</span>
+                  <span className="text-sm font-medium">Conference Session: {EVENT_CONFIG.name}</span>
                 </div>
                 <DropDownList
                   data={allSessions.length ? allSessions : EVENT_CONFIG.sessions}
@@ -229,6 +238,7 @@ export default function AppPage() {
               {/* Row 1: Language Selector (Full Width) */}
               <div className="w-full">
                 <LanguageSelector
+                  sessionId={broadcastId}
                   sourceLanguage={sourceLanguage}
                   targetLanguages={targetLanguages}
                   targetVoices={targetVoices}
@@ -249,12 +259,26 @@ export default function AppPage() {
                 )}
                 {targetLanguages.length > 0 && (
                   <div className="mt-4 p-4 rounded-lg border bg-muted/20 space-y-2">
-                    <p className="text-xs text-muted-foreground">Listener links — share after starting the broadcast</p>
+                    <p className="text-xs text-muted-foreground">Listener links. Share after starting the broadcast.</p>
                     <div className="space-y-1">
                       {targetLanguages.map((lang) => (
-                        <p key={lang} className="text-sm font-mono break-all">
-                          {typeof window !== "undefined" ? `${window.location.origin}/live/${broadcastId}/${lang}` : `/live/${broadcastId}/${lang}`}
-                        </p>
+                        <div key={lang} className="flex items-center gap-2">
+                          <p className="min-w-0 flex-1 text-sm font-mono break-all">
+                            {typeof window !== "undefined" ? `${window.location.origin}/live/${broadcastId}/${lang}` : `/live/${broadcastId}/${lang}`}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyLink(lang)}
+                            aria-label={`Copy ${lang.toUpperCase()} listener link`}
+                            className="shrink-0 rounded-md border border-[var(--color-baltic-sea-700)] p-1.5 text-muted-foreground transition-colors hover:border-[var(--color-keppel-500)] hover:text-[var(--color-keppel-400)]"
+                          >
+                            {copiedLang === lang ? (
+                              <Check className="h-4 w-4 text-[var(--color-keppel-400)]" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>

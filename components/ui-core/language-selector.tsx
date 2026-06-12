@@ -18,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
 
 interface LanguageSelectorProps {
+  sessionId: string
   sourceLanguage: string
   targetLanguages: string[]
   targetVoices?: Record<string, string>
@@ -104,6 +105,7 @@ const STT_LANGUAGES = [
 ]
 
 export function LanguageSelector({
+  sessionId,
   sourceLanguage,
   targetLanguages,
   targetVoices = {},
@@ -152,7 +154,7 @@ export function LanguageSelector({
   };
 
   const copyLink = (langCode: string) => {
-    const url = `${window.location.origin}/broadcast/${langCode}`
+    const url = `${window.location.origin}/live/${sessionId}/${langCode}`
     navigator.clipboard.writeText(url)
     toast.success(`${langCode.toUpperCase()} link copied`)
   }
@@ -252,7 +254,7 @@ export function LanguageSelector({
                              const langInfo = TTS_LANGUAGES.find(l => l.code === langCode)
                              const voiceOptions = VOICE_OPTIONS[langCode] || []
                              const currentVoice = targetVoices[langCode] || (voiceOptions[0]?.id || '')
-                             const url = typeof window !== 'undefined' ? `${window.location.origin}/broadcast/${langCode}` : ''
+                             const url = typeof window !== 'undefined' ? `${window.location.origin}/live/${sessionId}/${langCode}` : ''
 
                              if (!langInfo) return null
 
