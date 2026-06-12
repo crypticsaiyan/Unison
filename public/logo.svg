@@ -9,5 +9,5 @@
     <path d="M4 24 C10 15 18 15 24 24 C30 33 38 33 44 24" stroke="#34D399" stroke-width="2.1" stroke-linecap="round"/>
     <path d="M7 31 C13 25 19 25 24 31 C29 37 35 37 41 31" stroke="#34D399" stroke-width="1.1" stroke-linecap="round" stroke-opacity=".45"/>
   </g>
-  <text x="60" y="32" font-family="'Space Grotesk', system-ui, sans-serif" font-weight="600" font-size="28" fill="#E8F2EF" letter-spacing="-0.4">Unison</text>
+  <text x="60" y="32" font-family="'Space Grotesk', system-ui, sans-serif" font-weight="600" font-size="28" fill="#E8F2EF" letter-spacing="-0.4">unison</text>
 </svg>
