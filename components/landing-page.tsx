@@ -14,6 +14,9 @@ import {
   Lightning,
   ChartLineUp,
   ChatCircleDots,
+  ChartDonut,
+  GridFour,
+  Gauge,
 } from "@phosphor-icons/react"
 
 const LANGUAGES = [
@@ -356,6 +359,67 @@ export function LandingPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------------------------- */}
+        {/* KENDO UI                                                          */}
+        {/* ---------------------------------------------------------------- */}
+        <section className="border-b border-[var(--color-baltic-sea-800)] bg-[var(--color-baltic-sea-950)] py-24 lg:py-28">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-6 lg:px-12">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-sm font-medium uppercase tracking-wide text-[var(--color-keppel-400)]">
+                Built with Kendo UI for React
+              </p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-[var(--color-baltic-sea-50)] sm:text-3xl">
+                Every surface is a Kendo surface.
+              </h2>
+              <p className="mt-4 text-base leading-relaxed text-[var(--color-baltic-sea-300)]">
+                The attendee and organiser experiences are built end to end on
+                Kendo UI for React, from the live transcript feed to the
+                analytics dashboard.
+              </p>
+            </div>
+
+            <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                {
+                  icon: Gauge,
+                  name: "Charts & Gauges",
+                  desc: "Reach gauge, language donut, and listeners-over-time line chart on the organiser dashboard.",
+                },
+                {
+                  icon: GridFour,
+                  name: "Grid",
+                  desc: "Session schedule and inline session management with sorting and dialogs.",
+                },
+                {
+                  icon: ChatCircleDots,
+                  name: "Chat & ListView",
+                  desc: "Attendee Q&A chat, transcript feed, and the recent-questions list.",
+                },
+                {
+                  icon: ChartDonut,
+                  name: "Indicators & more",
+                  desc: "DropDownList, Window, Dialog, ProgressBar, Tooltip, Loader, Skeleton, and Notification throughout.",
+                },
+              ].map((k) => (
+                <div
+                  key={k.name}
+                  className="rounded-xl border border-[var(--color-baltic-sea-800)] bg-[var(--color-baltic-sea-900)] p-6"
+                >
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-baltic-sea-800)]">
+                    <k.icon className="h-5 w-5 text-[var(--color-keppel-400)]" weight="fill" />
+                  </div>
+                  <h3 className="font-semibold text-[var(--color-baltic-sea-100)]">
+                    {k.name}
+                  </h3>
+                  <p className="mt-1 text-sm text-[var(--color-baltic-sea-400)]">
+                    {k.desc}
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         </section>
