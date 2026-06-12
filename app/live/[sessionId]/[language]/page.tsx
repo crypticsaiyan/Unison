@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useParams } from "next/navigation"
-import { Broadcast } from "@phosphor-icons/react"
+import { Broadcast, FileText } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { AudioPlayback, AudioPlaybackHandle } from "@/components/ui-core/audio-playback"
 import { VideoReceiver, VideoReceiverRef } from "@/components/ui-core/video-receiver"
@@ -10,6 +10,7 @@ import { KendoTranscriptList, KendoTranscriptEntry } from "@/components/ui-core/
 import { SessionInfoCard } from "@/components/ui-core/session-info-card"
 import { QaChat } from "@/components/ui-core/qa-chat"
 import { AttendeeNetworking } from "@/components/ui-core/attendee-networking"
+import { SummaryWindow } from "@/components/ui-core/summary-window"
 import { KendoLanguageSelect } from "@/components/ui-core/kendo-language-select"
 import { Loader } from "@progress/kendo-react-indicators"
 import { TTS_LANGUAGES } from "@/lib/languages"
@@ -38,6 +39,7 @@ export default function SessionListenerPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [error, setError] = useState<string | null>(null)
   const [attendeeCount, setAttendeeCount] = useState(0)
+  const [showSummary, setShowSummary] = useState(false)
 
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null)
   const videoReceiverRef = useRef<VideoReceiverRef>(null)
@@ -222,6 +224,14 @@ export default function SessionListenerPage() {
               <div className="p-4 border-b border-[var(--color-baltic-sea-800)] bg-black/20 flex items-center gap-2">
                 <Broadcast className="h-5 w-5 text-[var(--color-keppel-400)]" />
                 <h3 className="font-semibold text-sm">Live Translation</h3>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto gap-1.5"
+                  onClick={() => setShowSummary(true)}
+                >
+                  <FileText className="h-4 w-4" /> Summary
+                </Button>
               </div>
               <div className="flex-1 overflow-hidden p-0">
                 <KendoTranscriptList entries={entries} isWaiting={isWaiting} />
@@ -262,6 +272,14 @@ export default function SessionListenerPage() {
           />
         </div>
       </div>
+
+      {showSummary && (
+        <SummaryWindow
+          sessionId={sessionId}
+          sessionName={session.name}
+          onClose={() => setShowSummary(false)}
+        />
+      )}
     </div>
   )
 }
