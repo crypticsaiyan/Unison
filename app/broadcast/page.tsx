@@ -23,7 +23,8 @@ import {
   Globe,
   DownloadSimple,
   Copy,
-  Check
+  Check,
+  FileText
 } from "@phosphor-icons/react"
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080"
@@ -199,14 +200,22 @@ export default function AppPage() {
     <div className="flex-1 w-full bg-background">
       <div className="h-16" />
       <main>
-        <section className="py-12 sm:py-16">
-          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-12">
+        <section className="py-8 sm:py-12">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col gap-6">
               {/* Conference session selector */}
               <div className="w-full rounded-xl border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-900)] p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Globe className="h-4 w-4 text-[var(--color-keppel-400)]" />
-                  <span className="text-sm font-medium">Conference Session: {EVENT_CONFIG.name}</span>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-[var(--color-keppel-400)]" />
+                    <span className="text-sm font-medium">Conference Session: {EVENT_CONFIG.name}</span>
+                  </div>
+                  {isRecording && (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
+                      Live
+                    </span>
+                  )}
                 </div>
                 <DropDownList
                   data={allSessions.length ? allSessions : EVENT_CONFIG.sessions}
@@ -223,15 +232,7 @@ export default function AppPage() {
                   <p className="text-xs text-muted-foreground">
                     Speaker: {session.speaker} · {session.startTime}
                   </p>
-                  <div className="flex items-center gap-3">
-                    {isRecording && (
-                      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-red-400">
-                        <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse" />
-                        Live
-                      </span>
-                    )}
-                    <QrShareButton session={session} />
-                  </div>
+                  <QrShareButton session={session} />
                 </div>
               </div>
 
@@ -286,9 +287,9 @@ export default function AppPage() {
               </div>
 
               {/* Row 2: Video/Mic + Transcript */}
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
                 {/* Col 1: Video + Mic */}
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <WebcamBroadcaster
                     ref={webcamRef}
                     wsUrl={WS_URL}
@@ -309,6 +310,7 @@ export default function AppPage() {
                   {isRecording ? (
                     <Button
                       variant="destructive"
+                      size="lg"
                       className="w-full"
                       onClick={handleEndSession}
                     >
@@ -317,11 +319,12 @@ export default function AppPage() {
                   ) : (
                     <Button
                       variant="default"
+                      size="lg"
                       className="w-full"
                       onClick={handleStartSession}
                       disabled={connectionStatus === "connecting"}
                     >
-                      Start Session
+                      {connectionStatus === "connecting" ? "Connecting…" : "Start Session"}
                     </Button>
                   )}
                 </div>
@@ -331,22 +334,22 @@ export default function AppPage() {
                   <div className="flex justify-between items-center px-2">
                      <h3 className="font-semibold text-lg">Live Transcript</h3>
                      <div className="flex items-center gap-2">
-                       <Button 
-                           variant="outline" 
-                           size="sm" 
+                       <Button
+                           variant="outline"
+                           size="sm"
                            disabled={transcripts.length === 0}
                            onClick={handleDownloadSRT}
                            className="gap-2"
                        >
-                           <DownloadSimple className="h-4 w-4" /> Download .SRT
+                           <DownloadSimple className="h-4 w-4" /> .SRT
                        </Button>
                        <Button
-                           variant="destructive"
+                           variant="outline"
                            size="sm"
-                           disabled={!isRecording && transcripts.length === 0}
-                           onClick={handleEndSession}
+                           onClick={() => setShowSummary(true)}
+                           className="gap-2"
                        >
-                           End Session
+                           <FileText className="h-4 w-4" /> Summary
                        </Button>
                      </div>
                   </div>
