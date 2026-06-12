@@ -44,7 +44,7 @@ export function SummaryWindow({ sessionId, sessionName, onClose }: SummaryWindow
   const downloadMarkdown = useCallback(() => {
     if (!data) return
     const md = [
-      `# ${sessionName} — Summary`,
+      `# ${sessionName}: Summary`,
       "",
       "## Key Takeaways",
       ...data.takeaways.map((t) => `- ${t}`),
@@ -68,7 +68,7 @@ export function SummaryWindow({ sessionId, sessionName, onClose }: SummaryWindow
 
   return (
     <Window
-      title={`Post-Talk Summary — ${sessionName}`}
+      title={`Post-Talk Summary: ${sessionName}`}
       onClose={onClose}
       initialWidth={560}
       initialHeight={560}
@@ -79,7 +79,7 @@ export function SummaryWindow({ sessionId, sessionName, onClose }: SummaryWindow
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <FileText className="h-10 w-10 text-[var(--color-keppel-400)]" />
             <p className="max-w-xs text-sm text-muted-foreground">
-              Generate an AI summary of this talk from the full transcript — takeaways, tools, and code.
+              Generate an AI summary of this talk from the full transcript: takeaways, tools, and code.
             </p>
             <Button onClick={generate}>Generate Summary</Button>
           </div>

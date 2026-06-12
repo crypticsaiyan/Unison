@@ -122,7 +122,7 @@ export function AttendeeNetworking({ sessionId, language }: AttendeeNetworkingPr
 
   if (step === "form") {
     return (
-      <div className="flex flex-col gap-4 rounded-xl border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-900)] p-5">
+      <div className="flex flex-col gap-4 p-5">
         <div className="flex items-center gap-2 text-sm font-medium">
           <Handshake className="h-4 w-4 text-[var(--color-keppel-400)]" />
           Meet attendees with similar interests
@@ -180,7 +180,7 @@ export function AttendeeNetworking({ sessionId, language }: AttendeeNetworkingPr
         </Fade>
       </NotificationGroup>
 
-      <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-900)] p-5">
+      <div className="flex flex-col gap-3 p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Users className="h-4 w-4 text-[var(--color-keppel-400)]" />
@@ -197,7 +197,7 @@ export function AttendeeNetworking({ sessionId, language }: AttendeeNetworkingPr
         {matches.length === 0 ? (
           <div className="py-6 text-center text-sm text-muted-foreground">
             <Lightning className="mx-auto mb-2 h-6 w-6 opacity-30" />
-            No matches yet — more attendees are joining.
+            No matches yet. More attendees are joining.
             <br />
             <span className="text-xs">Checking every 30s…</span>
           </div>

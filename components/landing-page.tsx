@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { DotGlobe } from "@/components/dot-globe"
@@ -19,6 +20,49 @@ const LANGUAGES = [
   "हिन्दी", "Español", "Français", "Deutsch", "日本語", "Italiano",
   "Português", "العربية", "한국어", "Nederlands", "English",
 ]
+
+// "language" in each language, ending with English
+const LANGUAGE_WORDS = [
+  "भाषा",       // Hindi
+  "idioma",     // Spanish
+  "langue",     // French
+  "Sprache",    // German
+  "言語",        // Japanese
+  "lingua",     // Italian
+  "idioma",     // Portuguese
+  "لغة",        // Arabic
+  "언어",        // Korean
+  "taal",       // Dutch
+  "language",   // English — final
+]
+
+const CYCLE_INTERVAL = 600   // ms between words
+const PAUSE_ON_ENGLISH = 4000 // ms to rest on "language" before restarting
+
+function CyclingWord() {
+  const [index, setIndex] = useState(0)
+  const [visible, setVisible] = useState(true)
+  const final = index === LANGUAGE_WORDS.length - 1
+
+  useEffect(() => {
+    const delay = final ? PAUSE_ON_ENGLISH : CYCLE_INTERVAL
+    const fadeOut = !final ? setTimeout(() => setVisible(false), CYCLE_INTERVAL - 180) : undefined
+    const next = setTimeout(() => {
+      setIndex((i) => (i + 1) % LANGUAGE_WORDS.length)
+      setVisible(true)
+    }, delay)
+    return () => { if (fadeOut) clearTimeout(fadeOut); clearTimeout(next) }
+  }, [index, final])
+
+  return (
+    <span
+      className="inline-block transition-opacity duration-150"
+      style={{ opacity: visible ? 1 : 0 }}
+    >
+      {LANGUAGE_WORDS[index]}
+    </span>
+  )
+}
 
 export function LandingPage() {
   return (
@@ -48,14 +92,14 @@ export function LandingPage() {
               <h1 className="mt-6 text-balance text-3xl font-bold leading-[1.1] tracking-tight text-[var(--color-baltic-sea-50)] sm:text-4xl lg:text-5xl">
                 Every talk,
                 <br />
-                in <span className="text-[var(--color-keppel-400)]">every language</span>,
+                in <span className="text-[var(--color-keppel-400)]">every <CyclingWord /></span>,
                 <br />
                 in real time.
               </h1>
 
               <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-relaxed text-[var(--color-baltic-sea-300)] lg:mx-0">
                 Unison live-dubs a speaker into every attendee's language as they
-                talk — and lets the audience ask questions in their own words.
+                talk, and lets the audience ask questions in their own words.
                 Real-time STT, translation and neural voices in one pipeline.
               </p>
 
@@ -147,7 +191,7 @@ export function LandingPage() {
               </h2>
               <p className="mt-4 text-base leading-relaxed text-[var(--color-baltic-sea-300)]">
                 At a global conference, most of the room hears a talk in a language
-                that isn't their first. Unison closes that gap — instantly, for
+                that isn't their first. Unison closes that gap instantly, for
                 everyone, without interrupting the speaker.
               </p>
             </div>
@@ -225,7 +269,7 @@ export function LandingPage() {
                   <p className="mt-3 max-w-md text-sm leading-relaxed text-[var(--color-baltic-sea-300)]">
                     Go live from the stage. Pick a session from the event schedule,
                     choose target languages, and Unison fans your voice out to every
-                    listener — dubbed and transcribed — while audience questions come
+                    listener, dubbed and transcribed, while audience questions come
                     back to you in English.
                   </p>
                 </div>
@@ -261,7 +305,7 @@ export function LandingPage() {
                 </h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--color-baltic-sea-400)]">
                   Attendees ask questions in their own words, grounded in the live
-                  transcript — the speaker sees them in English.
+                  transcript, and the speaker sees them in English.
                 </p>
               </div>
 
@@ -285,7 +329,7 @@ export function LandingPage() {
                 </h2>
                 <p className="mt-4 max-w-md text-base leading-relaxed text-[var(--color-baltic-sea-300)]">
                   Audio streams in over WebSockets, gets transcribed, translated and
-                  re-voiced, then streams back out — all while the speaker keeps
+                  re-voiced, then streams back out, all while the speaker keeps
                   talking.
                 </p>
               </div>

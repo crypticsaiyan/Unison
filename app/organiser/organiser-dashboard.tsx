@@ -441,7 +441,7 @@ export default function OrganiserDashboard() {
                 cells={{ data: (props: any) => {
                   const s = props.dataItem as ConferenceSession
                   const inherited = !s.date
-                  const shown = s.date || eventConfig.eventStart || eventConfig.eventDay || "—"
+                  const shown = s.date || eventConfig.eventStart || eventConfig.eventDay || "-"
                   return (
                     <td>
                       <span className={inherited ? "text-muted-foreground italic" : ""}>

@@ -34,7 +34,7 @@ export function QrShare({ session, onClose }: QrShareProps) {
 
   return (
     <Window
-      title={`Share Session Link — ${session.name}`}
+      title={`Share Session Link: ${session.name}`}
       onClose={onClose}
       initialWidth={420}
       initialHeight={560}
