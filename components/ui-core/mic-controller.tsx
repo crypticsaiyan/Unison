@@ -32,12 +32,15 @@ export const MicController = forwardRef<MicControllerHandle, MicControllerProps>
 }, ref) {
   const [audioLevel, setAudioLevel] = useState(0)
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null)
-  
+  const [muted, setMuted] = useState(false)
+
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const processorRef = useRef<ScriptProcessorNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  // Live mute flag read inside the audio callback without re-registering it.
+  const mutedRef = useRef(false)
 
   // Cleanup function
   const cleanup = useCallback(() => {
@@ -78,6 +81,8 @@ export const MicController = forwardRef<MicControllerHandle, MicControllerProps>
       
       mediaStreamRef.current = stream
       setPermissionGranted(true)
+      setMuted(false)
+      mutedRef.current = false
 
       // Create audio context without forcing sample rate
       const audioContext = new AudioContext()
@@ -100,6 +105,8 @@ export const MicController = forwardRef<MicControllerHandle, MicControllerProps>
       processorRef.current = processor
 
       processor.onaudioprocess = (e) => {
+        // Muted: keep the stream and connection alive, just stop sending audio.
+        if (mutedRef.current) return
         const inputData = e.inputBuffer.getChannelData(0)
         // Convert Float32Array to Int16Array for transmission
         // Note: This sends raw audio at context sample rate (e.g. 44.1k or 48k)
@@ -141,8 +148,18 @@ export const MicController = forwardRef<MicControllerHandle, MicControllerProps>
   // Stop recording
   const stopRecording = useCallback(() => {
     cleanup()
+    setMuted(false)
+    mutedRef.current = false
     onStop()
   }, [cleanup, onStop])
+
+  const toggleMute = useCallback(() => {
+    setMuted((m) => {
+      const next = !m
+      mutedRef.current = next
+      return next
+    })
+  }, [])
 
   // Expose imperative start/stop so a parent "Start/End Session" control can drive the mic.
   useImperativeHandle(ref, () => ({
@@ -169,14 +186,12 @@ export const MicController = forwardRef<MicControllerHandle, MicControllerProps>
   }, [isRecording, cleanup])
 
   const handleToggle = () => {
-    if (!isRecording && !canStart) {
-      return
-    }
-
-    if (isRecording) {
-      stopRecording()
-    } else {
+    if (!isRecording) {
+      if (!canStart) return
       startRecording()
+    } else {
+      // While live, the mic button mutes/unmutes. It must NOT end the session.
+      toggleMute()
     }
   }
 
@@ -231,16 +246,17 @@ export const MicController = forwardRef<MicControllerHandle, MicControllerProps>
             size="icon"
             onClick={handleToggle}
             disabled={connectionStatus === 'connecting'}
+            aria-label={!isRecording ? 'Start microphone' : muted ? 'Unmute microphone' : 'Mute microphone'}
             className={`
               relative w-10 h-10 rounded-full shrink-0
               transition-all duration-300
-              ${isRecording
+              ${isRecording && muted
                 ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
                 : 'bg-primary hover:bg-primary/90 text-primary-foreground'
               }
             `}
           >
-            {isRecording ? (
+            {isRecording && muted ? (
               <MicrophoneSlash className="h-5 w-5" weight="fill" />
             ) : (
               <Microphone className="h-5 w-5" weight="fill" />
@@ -250,7 +266,7 @@ export const MicController = forwardRef<MicControllerHandle, MicControllerProps>
           <div className="flex flex-col gap-0.5 min-w-0">
              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-sm font-medium leading-none shrink-0">
-                  {isRecording ? 'Broadcasting' : 'Mic Ready'}
+                  {!isRecording ? 'Mic Ready' : muted ? 'Muted' : 'Broadcasting'}
                 </span>
                 <Badge
                   variant="outline"
@@ -261,7 +277,7 @@ export const MicController = forwardRef<MicControllerHandle, MicControllerProps>
                 </Badge>
              </div>
              <p className="text-[10px] text-muted-foreground">
-               {isRecording ? 'Listening...' : 'Click to start'}
+               {!isRecording ? 'Click to start' : muted ? 'Click to unmute' : 'Listening...'}
              </p>
              {!canStart && blockedReason && (
                <p className="text-[10px] text-destructive">{blockedReason}</p>
@@ -270,7 +286,7 @@ export const MicController = forwardRef<MicControllerHandle, MicControllerProps>
         </div>
 
         {/* Right: Audio Visualizer — hidden on small screens */}
-        <div className="hidden sm:flex items-end justify-end gap-0.5 h-6 shrink-0">
+        <div className={`hidden sm:flex items-end justify-end gap-0.5 h-6 shrink-0 transition-opacity ${muted ? 'opacity-30' : ''}`}>
           {bars}
         </div>
       </CardContent>
