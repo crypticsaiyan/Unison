@@ -26,24 +26,64 @@ export interface SessionRecord {
   name: string;
   speaker: string;
   startTime: string;
+  endTime?: string;
+  date?: string;   // "YYYY-MM-DD" — overrides eventDay for this session
   track?: string;
   description?: string;
 }
 
+export interface EventConfig {
+  name: string;
+  date: string;
+  eventDay: string;   // YYYY-MM-DD — legacy single day, kept for compat
+  eventStart?: string; // YYYY-MM-DD — first day of event
+  eventEnd?: string;   // YYYY-MM-DD — last day of event
+}
+
 const DATA_DIR = path.join(process.cwd(), "data");
 const SESSIONS_FILE = path.join(DATA_DIR, "sessions.json");
+const EVENT_CONFIG_FILE = path.join(DATA_DIR, "event-config.json");
+
+const DEFAULT_EVENT_CONFIG: EventConfig = {
+  name: "Tech Conference 2026",
+  date: "June 2026 · Amsterdam",
+  eventDay: new Date().toISOString().slice(0, 10),
+};
 
 const DEFAULT_SESSIONS: SessionRecord[] = [
-  { id: "keynote", name: "Keynote: React 20 and the Compiler Era", speaker: "Andrew Clark · Meta", startTime: "09:30", track: "Main Stage", description: "What's coming in React 20 — the compiler, server actions, and the path to zero-bundle UI." },
-  { id: "server-components", name: "Server Components in Production: Lessons from Scale", speaker: "Delba de Oliveira · Vercel", startTime: "10:15", track: "Main Stage", description: "Real-world patterns, pitfalls, and performance wins from shipping RSC at scale." },
-  { id: "ai-ux", name: "Workshop: Building AI-Powered UX with React", speaker: "Tejas Kumar · Gitpod", startTime: "11:00", track: "Workshop", description: "Hands-on workshop: streaming UI, generative components, and agentic patterns in React." },
-  { id: "signals", name: "Signals vs. State: A Reactivity Deep Dive", speaker: "Jason Miller · Google", startTime: "13:00", track: "Main Stage", description: "Why fine-grained reactivity matters and what React can learn from Preact Signals." },
-  { id: "panel", name: "Panel: The Future of Open Source JavaScript", speaker: "Ryan Dahl, Rich Harris, Evan You", startTime: "14:30", track: "Panel", description: "Node, Deno, Bun, Vite — where is the JS ecosystem heading in 2027?" },
-  { id: "perf", name: "Micro-Optimising React: What the Profiler Doesn't Show", speaker: "Nadia Makarevich · AG Grid", startTime: "15:30", track: "Main Stage", description: "Hidden rendering costs, scheduler internals, and how to read a flame graph like a pro." },
-  { id: "closing", name: "Closing Keynote: JS at the Edge", speaker: "Guillermo Rauch · Vercel", startTime: "16:30", track: "Main Stage", description: "Edge computing, AI inference at the CDN layer, and the next five years of the web." },
+  { id: "opening", name: "Opening Keynote: The Next Era of Web Development", speaker: "Alex Rivera · Principal Engineer", startTime: "09:00", endTime: "09:45", track: "Main Stage", description: "Where the web platform is headed — new primitives, new patterns, and what developers should be thinking about today." },
+  { id: "session-1", name: "Building at Scale: Lessons from Millions of Users", speaker: "Jordan Kim · Staff Engineer", startTime: "10:00", endTime: "10:45", track: "Main Stage", description: "Real-world architecture decisions, trade-offs, and the hidden costs of scale." },
+  { id: "workshop-1", name: "Workshop: Modern State Management Patterns", speaker: "Sam Patel · Developer Advocate", startTime: "11:00", endTime: "12:00", track: "Workshop", description: "Hands-on deep dive into state primitives, derived state, and keeping complex UIs predictable." },
+  { id: "session-2", name: "Performance Without Compromise", speaker: "Morgan Lee · Performance Engineer", startTime: "13:00", endTime: "13:45", track: "Main Stage", description: "Profiling techniques, rendering strategies, and practical wins you can ship this week." },
+  { id: "panel-1", name: "Panel: Open Source in 2026 — What's Changed?", speaker: "Casey Chen, Drew Santos, Avery Walsh", startTime: "14:00", endTime: "14:45", track: "Panel", description: "Three open-source maintainers on sustainability, governance, and the evolving relationship between companies and communities." },
+  { id: "session-3", name: "AI-Augmented Development: Practical Patterns", speaker: "Taylor Brooks · AI Platform Lead", startTime: "15:00", endTime: "15:45", track: "Main Stage", description: "How AI tooling is changing the development loop — and where it still falls short." },
+  { id: "closing", name: "Closing Keynote: What We're Building Toward", speaker: "Riley Nguyen · CTO", startTime: "16:00", endTime: "16:45", track: "Main Stage", description: "A look at the trends converging over the next five years — and the open questions we still need to answer." },
 ];
 
 let sessionsStore: SessionRecord[] = [];
+let eventConfigStore: EventConfig = { ...DEFAULT_EVENT_CONFIG };
+
+function loadEventConfig(): void {
+  try {
+    if (fs.existsSync(EVENT_CONFIG_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(EVENT_CONFIG_FILE, "utf8"));
+      eventConfigStore = { ...DEFAULT_EVENT_CONFIG, ...parsed };
+    } else {
+      saveEventConfig();
+    }
+  } catch (e) {
+    console.error("[EventConfig] load failed, using defaults:", e);
+  }
+}
+
+function saveEventConfig(): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(EVENT_CONFIG_FILE, JSON.stringify(eventConfigStore, null, 2));
+  } catch (e) {
+    console.error("[EventConfig] save failed:", e);
+  }
+}
 
 function loadSessions(): void {
   try {
@@ -86,6 +126,7 @@ function getSessionMeta(id: string): { name: string; speaker: string } {
 }
 
 loadSessions();
+loadEventConfig();
 
 // Demo assumption: share of attendees who are NOT native English speakers.
 // Used to compute the "without Unison" inclusion baseline on the dashboard.
@@ -95,6 +136,22 @@ const ASSUMED_NON_ENGLISH_RATIO = 0.75;
 const peakBySession = new Map<string, number>();              // sessionId -> peak concurrent listeners
 const historyBySession = new Map<string, number[]>();          // sessionId -> rolling listener counts (~10 min @ 5s)
 const HISTORY_MAX = 120;
+
+// Per-session aggregate that SURVIVES host disconnect, so an ended session keeps
+// showing real peak/history/reach instead of vanishing (which used to trigger a
+// fake demo fallback on the dashboard).
+interface SessionAgg {
+  targetLangs: Set<string>;   // languages the host offered
+  langsServed: Set<string>;   // languages that ever had >=1 real listener
+  ended: boolean;             // host has disconnected
+}
+const sessionAgg = new Map<string, SessionAgg>();
+
+function getAgg(sessionId: string): SessionAgg {
+  let a = sessionAgg.get(sessionId);
+  if (!a) { a = { targetLangs: new Set(), langsServed: new Set(), ended: false }; sessionAgg.set(sessionId, a); }
+  return a;
+}
 
 interface TranscriptStoreEntry { t: number; original: string; translated: string; lang: string }
 const transcriptStore = new Map<string, TranscriptStoreEntry[]>(); // sessionId -> last 200 chunks
@@ -135,13 +192,28 @@ function buildStats() {
   let totalListeners = 0;
   let englishListeners = 0;
 
-  broadcasts.forEach((session, sessionId) => {
-    const { total, byLang } = countListeners(session);
+  // Union of currently-live broadcasts and any session that ran earlier (ended
+  // sessions stay in sessionAgg so the dashboard keeps real peak/history).
+  const sessionIds = new Set<string>([...broadcasts.keys(), ...sessionAgg.keys()]);
+  let targetLangUnion = new Set<string>();
+  let servedLangUnion = new Set<string>();
+
+  sessionIds.forEach((sessionId) => {
+    const live = broadcasts.get(sessionId);
+    const agg = getAgg(sessionId);
+    const { total, byLang } = live ? countListeners(live) : { total: 0, byLang: {} as Record<string, number> };
+
     totalListeners += total;
     for (const [lang, n] of Object.entries(byLang)) {
       listenersByLanguage[lang] = (listenersByLanguage[lang] || 0) + n;
       if (lang === "en") englishListeners += n;
+      agg.langsServed.add(lang);
     }
+    if (live) live.targetLangs.forEach((l) => agg.targetLangs.add(l));
+
+    agg.targetLangs.forEach((l) => targetLangUnion.add(l));
+    agg.langsServed.forEach((l) => servedLangUnion.add(l));
+
     const peak = Math.max(peakBySession.get(sessionId) || 0, total);
     peakBySession.set(sessionId, peak);
     const meta = getSessionMeta(sessionId);
@@ -150,17 +222,26 @@ function buildStats() {
       name: meta?.name || sessionId,
       count: total,
       peak,
-      languages: Object.keys(byLang),
+      languages: live ? Object.keys(byLang) : [...agg.langsServed],
       history: historyBySession.get(sessionId) || [],
-      status: "live",
+      status: total > 0 ? "live" : "ended",
     });
   });
 
-  // Reach: with Unison everyone is served. Baseline = assumed non-english who
-  // could NOT follow an English-only talk.
+  // Live sessions first, then ended; within a group by current listener count.
+  listenersBySession.sort((a, b) =>
+    (a.status === b.status ? b.count - a.count : a.status === "live" ? -1 : 1)
+  );
+
+  // Reach = distinct languages that were actually served / distinct languages
+  // the host(s) offered. Naturally lands below 100 when some offered languages
+  // had no listeners, instead of being hardcoded to 100.
+  const offeredCount = targetLangUnion.size;
+  const reachPercentage = offeredCount > 0
+    ? Math.round((servedLangUnion.size / offeredCount) * 100)
+    : 0;
+
   const nonEnglishServed = totalListeners - englishListeners;
-  const reachPercentage = totalListeners > 0 ? 100 : 0;
-  const assumedNonEnglishBaseline = nonEnglishServed;
 
   return {
     totalListeners,
@@ -169,18 +250,26 @@ function buildStats() {
       .sort((a, b) => b.count - a.count),
     listenersBySession,
     reachPercentage,
+    languagesServed: servedLangUnion.size,
+    languagesOffered: offeredCount,
     activeLanguages: Object.keys(listenersByLanguage),
     englishListeners,
     nonEnglishListeners: nonEnglishServed,
     assumedNonEnglishRatio: ASSUMED_NON_ENGLISH_RATIO,
-    assumedNonEnglishBaseline,
+    assumedNonEnglishBaseline: nonEnglishServed,
   };
 }
 
 // Sample listener counts into per-session history every 5s for the line chart.
+// Only LIVE sessions are sampled — an ended session's history is frozen at its
+// last real shape so it keeps showing the curve it actually had (plus the single
+// trailing zero added at disconnect to show the drop-off).
 setInterval(() => {
   broadcasts.forEach((session, sessionId) => {
-    const { total } = countListeners(session);
+    const { total, byLang } = countListeners(session);
+    const agg = getAgg(sessionId);
+    session.targetLangs.forEach((l) => agg.targetLangs.add(l));
+    Object.keys(byLang).forEach((l) => agg.langsServed.add(l));
     let h = historyBySession.get(sessionId);
     if (!h) { h = []; historyBySession.set(sessionId, h); }
     h.push(total);
@@ -241,6 +330,8 @@ const server = http.createServer((req, res) => {
         name: String(data.name).trim(),
         speaker: String(data.speaker || "TBD").trim(),
         startTime: String(data.startTime || "").trim(),
+        endTime: data.endTime ? String(data.endTime).trim() : undefined,
+        date: data.date ? String(data.date).trim() : undefined,
         track: data.track ? String(data.track).trim() : undefined,
         description: data.description ? String(data.description).trim() : undefined,
       };
@@ -263,6 +354,8 @@ const server = http.createServer((req, res) => {
         name: data.name != null ? String(data.name).trim() : cur.name,
         speaker: data.speaker != null ? String(data.speaker).trim() : cur.speaker,
         startTime: data.startTime != null ? String(data.startTime).trim() : cur.startTime,
+        endTime: data.endTime != null ? String(data.endTime).trim() || undefined : cur.endTime,
+        date: data.date != null ? String(data.date).trim() || undefined : cur.date,
         track: data.track != null ? String(data.track).trim() || undefined : cur.track,
         description: data.description != null ? String(data.description).trim() || undefined : cur.description,
       };
@@ -280,6 +373,26 @@ const server = http.createServer((req, res) => {
     if (sessionsStore.length === before) { sendJSON(res, 404, { error: "not_found" }); return; }
     saveSessions();
     sendJSON(res, 200, { ok: true });
+    return;
+  }
+
+  // GET /event-config — return current event config
+  if (req.method === "GET" && url.pathname === "/event-config") {
+    sendJSON(res, 200, eventConfigStore);
+    return;
+  }
+
+  // PUT /event-config — update event config
+  if (req.method === "PUT" && url.pathname === "/event-config") {
+    readBody((data) => {
+      if (data.name != null) eventConfigStore.name = String(data.name).trim();
+      if (data.date != null) eventConfigStore.date = String(data.date).trim();
+      if (data.eventDay != null) eventConfigStore.eventDay = String(data.eventDay).trim();
+      if (data.eventStart != null) eventConfigStore.eventStart = String(data.eventStart).trim();
+      if (data.eventEnd != null) eventConfigStore.eventEnd = String(data.eventEnd).trim();
+      saveEventConfig();
+      sendJSON(res, 200, { ok: true, config: eventConfigStore });
+    });
     return;
   }
 
@@ -718,6 +831,11 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
     const session: BroadcastSession = { targetLangs, listeners: new Map() };
     broadcasts.set(broadcastId, session);
 
+    // Record offered languages and reopen the aggregate (a restarted session is live again).
+    const agg = getAgg(broadcastId);
+    targetLangs.forEach((l) => agg.targetLangs.add(l));
+    agg.ended = false;
+
     // Migrate any listeners who connected before the host started
     const waiting = waitingListeners.get(broadcastId);
     if (waiting) {
@@ -831,6 +949,14 @@ wss.on("connection", (ws: WebSocket, req: IncomingMessage) => {
       console.log(`[Server] Host disconnected id=${broadcastId}`);
       broadcasts.delete(broadcastId);
       waitingListeners.delete(broadcastId);
+      getAgg(broadcastId).ended = true;
+      // One trailing zero so the line drops to 0 at end, then the frozen history
+      // is preserved (sampler skips ended sessions).
+      const h = historyBySession.get(broadcastId);
+      if (h && h[h.length - 1] !== 0) {
+        h.push(0);
+        if (h.length > HISTORY_MAX) h.splice(0, h.length - HISTORY_MAX);
+      }
 
       session.listeners.forEach(sockets => {
         sockets.forEach(l => {

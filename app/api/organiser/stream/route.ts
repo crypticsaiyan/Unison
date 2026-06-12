@@ -68,8 +68,9 @@ export async function GET(request: Request) {
                 cache: "no-store",
                 signal: AbortSignal.timeout(3000),
               })
-              const data = res.ok ? await res.json() : null
-              payload = data && data.totalListeners > 0 ? data : { ...demoStats(), _seeded: true }
+              // Always surface the real payload — including zeros for an ended
+              // session. Only fall back to demo when the server is unreachable.
+              payload = res.ok ? await res.json() : { ...demoStats(), _seeded: true }
             } catch {
               payload = { ...demoStats(), _seeded: true }
             }

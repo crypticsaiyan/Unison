@@ -14,14 +14,18 @@ import {
   ChartTitle,
 } from "@progress/kendo-react-charts"
 import { RadialGauge } from "@progress/kendo-react-gauges"
-import { Grid, GridColumn } from "@progress/kendo-react-grid"
+import { Grid, GridColumn, GridToolbar } from "@progress/kendo-react-grid"
+import { Dialog, DialogActionsBar } from "@progress/kendo-react-dialogs"
+import { DropDownList } from "@progress/kendo-react-dropdowns"
 import { ListView, ListViewItemProps } from "@progress/kendo-react-listview"
 import { Loader, Skeleton, Badge } from "@progress/kendo-react-indicators"
 import { ProgressBar } from "@progress/kendo-react-progressbars"
 import { Tooltip } from "@progress/kendo-react-tooltip"
 import "hammerjs"
 import { getLanguage } from "@/lib/languages"
-import { Globe, Users, ChartLine, Question } from "@phosphor-icons/react"
+import { Globe, Users, ChartLine, Question, GearSix, FloppyDisk, CalendarBlank, Plus, PencilSimple, Trash } from "@phosphor-icons/react"
+import { useSessions } from "@/hooks/use-sessions"
+import type { ConferenceSession } from "@/lib/event-config"
 
 const ACCESS_KEY = "demo"
 const KEPPEL = ["#3fbfb0", "#5fd0c2", "#2f9e91", "#8fe0d6", "#1f6b63", "#b9ece5"]
@@ -39,6 +43,8 @@ interface Stats {
     status: string
   }[]
   reachPercentage: number
+  languagesServed?: number
+  languagesOffered?: number
   activeLanguages: string[]
   englishListeners: number
   nonEnglishListeners: number
@@ -47,6 +53,7 @@ interface Stats {
 }
 
 interface QuestionEntry { id: string; t: number; text: string; lang: string }
+interface EventConfig { name: string; date: string; eventDay: string; eventStart?: string; eventEnd?: string }
 
 function QuestionItem(props: ListViewItemProps) {
   const q = props.dataItem as QuestionEntry
@@ -96,8 +103,55 @@ export default function OrganiserDashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [questions, setQuestions] = useState<QuestionEntry[]>([])
   const [error, setError] = useState(false)
+  const today = new Date().toISOString().slice(0, 10)
+  const [eventConfig, setEventConfig] = useState<EventConfig>({ name: "", date: "", eventDay: today, eventStart: today, eventEnd: today })
+  const [eventConfigSaving, setEventConfigSaving] = useState(false)
+  const [eventConfigSaved, setEventConfigSaved] = useState(false)
+  const { sessions, loading: sessionsLoading, error: sessionsError, refresh: refreshSessions, createSession, updateSession, deleteSession } = useSessions()
+  const [editing, setEditing] = useState<Partial<ConferenceSession> | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<ConferenceSession | null>(null)
+  const [sessionSaving, setSessionSaving] = useState(false)
 
   const authorized = unlocked || keyParam === ACCESS_KEY
+
+  useEffect(() => {
+    if (!authorized) return
+    fetch("/api/event-config", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => setEventConfig(d))
+      .catch(() => {})
+  }, [authorized])
+
+  const saveEventConfig = useCallback(async () => {
+    setEventConfigSaving(true)
+    try {
+      await fetch("/api/event-config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eventConfig),
+      })
+      setEventConfigSaved(true)
+      setTimeout(() => setEventConfigSaved(false), 2000)
+    } finally {
+      setEventConfigSaving(false)
+    }
+  }, [eventConfig])
+
+  const EMPTY_SESSION: Partial<ConferenceSession> = { name: "", speaker: "", startTime: "", endTime: "", track: "Main Stage", description: "" }
+
+  const saveSession = useCallback(async () => {
+    if (!editing?.name?.trim()) return
+    setSessionSaving(true)
+    if (editing.id) await updateSession(editing.id, editing)
+    else await createSession(editing)
+    setSessionSaving(false)
+    setEditing(null)
+  }, [editing, createSession, updateSession])
+
+  const doDelete = useCallback(async () => {
+    if (confirmDelete) await deleteSession(confirmDelete.id)
+    setConfirmDelete(null)
+  }, [confirmDelete, deleteSession])
 
   const fetchQuestions = useCallback(async (sessionId: string) => {
     try {
@@ -147,19 +201,36 @@ export default function OrganiserDashboard() {
     return Array.from({ length: maxLen }, (_, i) => `-${(maxLen - i - 1) * 5}s`)
   }, [stats])
 
+  // Sessions sorted chronologically. Undated sessions inherit the event day so
+  // they interleave correctly with dated ones instead of clumping at one end.
+  const sortedSessions = useMemo(() => {
+    const fallbackDay = eventConfig.eventStart || eventConfig.eventDay || ""
+    const effectiveDate = (s: ConferenceSession) => s.date || fallbackDay
+    return [...sessions]
+      .map((s) => ({ ...s, _effectiveDate: effectiveDate(s) }))
+      .sort((a, b) => {
+        const da = `${a._effectiveDate}T${a.startTime ?? ""}`
+        const db = `${b._effectiveDate}T${b.startTime ?? ""}`
+        return da.localeCompare(db)
+      })
+  }, [sessions, eventConfig.eventStart, eventConfig.eventDay])
+
   if (!authorized) return <PasswordGate onUnlock={() => setUnlocked(true)} />
 
   const reach = stats?.reachPercentage ?? 0
   const total = stats?.totalListeners ?? 0
   const englishOnly = stats?.englishListeners ?? 0
+  const langsServed = stats?.languagesServed ?? 0
+  const langsOffered = stats?.languagesOffered ?? 0
 
   return (
+    <>
     <div className="min-h-screen bg-background px-4 pb-16 pt-24 md:px-8">
       <div className="mx-auto max-w-[1400px] space-y-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-keppel-400)]">
-              React Summit / JSNation 2026
+              {eventConfig.name || "Organiser Dashboard"}
             </p>
             <h1 className="text-2xl font-bold tracking-tight">Organiser Dashboard</h1>
           </div>
@@ -183,7 +254,7 @@ export default function OrganiserDashboard() {
             </div>
             <div className="flex items-center justify-center">
               <Tooltip anchorElement="target" position="top">
-                <span title={`${reach}% of listeners are served in their own language`}>
+                <span title={`${langsServed} of ${langsOffered} offered languages had listeners`}>
                   <RadialGauge
                     pointer={{ value: reach }}
                     scale={{
@@ -204,10 +275,10 @@ export default function OrganiserDashboard() {
             <div className="mt-2 text-center">
               <div className="text-4xl font-bold text-[var(--color-keppel-400)]">{reach}%</div>
               <p className="mt-2 text-sm text-[var(--color-baltic-sea-100)]">
-                With Unison: <span className="font-semibold">{total} of {total}</span> attendees can follow this talk.
+                <span className="font-semibold">{langsServed} of {langsOffered}</span> offered languages reached an attendee.
               </p>
               <p className="text-xs text-muted-foreground">
-                Without Unison: only <span className="font-semibold">{englishOnly} of {total}</span> could.
+                Without Unison: only <span className="font-semibold">{englishOnly} of {total}</span> attendees could follow along.
               </p>
             </div>
           </div>
@@ -301,13 +372,16 @@ export default function OrganiserDashboard() {
               title="Status"
               width="120px"
               cells={{
-                data: (props: any) => (
-                  <td>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-400">
-                      <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> {props.dataItem.status}
-                    </span>
-                  </td>
-                ),
+                data: (props: any) => {
+                  const live = props.dataItem.status === "live"
+                  return (
+                    <td>
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium ${live ? "text-green-400" : "text-muted-foreground"}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full ${live ? "bg-green-500" : "bg-muted-foreground"}`} /> {props.dataItem.status}
+                      </span>
+                    </td>
+                  )
+                },
               }}
             />
           </Grid>
@@ -333,8 +407,273 @@ export default function OrganiserDashboard() {
         </div>
         </>
         )}
+
+        {/* Session Management — always visible once authorized */}
+        <div className="rounded-xl border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-900)]">
+          <div className="flex items-center justify-between gap-2 border-b border-[var(--color-baltic-sea-800)] px-4 py-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+              <CalendarBlank className="h-4 w-4 text-[var(--color-keppel-400)]" /> Session Schedule
+            </div>
+            <button
+              onClick={() => setEditing({ ...EMPTY_SESSION, date: eventConfig.eventStart || eventConfig.eventDay || "" })}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-keppel-500)] px-3 py-1.5 text-xs font-semibold text-[var(--color-keppel-950)] hover:bg-[var(--color-keppel-400)]"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add Session
+            </button>
+          </div>
+          {sessionsError && (
+            <div className="mx-4 mt-3 flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {sessionsError}
+              <button onClick={refreshSessions} className="ml-4 text-xs underline underline-offset-2 opacity-80 hover:opacity-100">Retry</button>
+            </div>
+          )}
+          <div className="p-1">
+            <Grid data={sortedSessions} style={{ background: "transparent" }}>
+              <GridToolbar>
+                <span className="px-2 text-sm text-muted-foreground">
+                  {sessionsLoading ? "Loading…" : `${sessions.length} session${sessions.length === 1 ? "" : "s"}`}
+                </span>
+              </GridToolbar>
+              <GridColumn
+                field="date"
+                title="Date"
+                width="130px"
+                cells={{ data: (props: any) => {
+                  const s = props.dataItem as ConferenceSession
+                  const inherited = !s.date
+                  const shown = s.date || eventConfig.eventStart || eventConfig.eventDay || "—"
+                  return (
+                    <td>
+                      <span className={inherited ? "text-muted-foreground italic" : ""}>
+                        {shown}{inherited ? " (event day)" : ""}
+                      </span>
+                    </td>
+                  )
+                }}}
+              />
+              <GridColumn field="startTime" title="Start" width="75px" />
+              <GridColumn field="endTime" title="End" width="75px" />
+              <GridColumn field="name" title="Session" />
+              <GridColumn field="speaker" title="Speaker" />
+              <GridColumn field="track" title="Track" width="120px" />
+              <GridColumn
+                title="Actions"
+                width="100px"
+                cells={{ data: (props: any) => (
+                  <td>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => {
+                          const { _effectiveDate, ...item } = props.dataItem as any
+                          if (!item.date) item.date = eventConfig.eventStart || eventConfig.eventDay || ""
+                          setEditing(item)
+                        }}
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-baltic-sea-800)] hover:text-[var(--color-keppel-400)]"
+                        aria-label="Edit"
+                      >
+                        <PencilSimple className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(props.dataItem)}
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-[var(--color-baltic-sea-800)] hover:text-destructive"
+                        aria-label="Delete"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                )}}
+              />
+            </Grid>
+          </div>
+        </div>
+
+        {/* Event Settings — always visible once authorized */}
+        <div className="rounded-xl border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-900)]">
+          <div className="flex items-center gap-2 border-b border-[var(--color-baltic-sea-800)] px-4 py-3 text-sm font-medium text-muted-foreground">
+            <GearSix className="h-4 w-4 text-[var(--color-keppel-400)]" /> Event Settings
+          </div>
+          <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--color-baltic-sea-300)]">Event name</label>
+              <input
+                type="text"
+                value={eventConfig.name}
+                onChange={(e) => setEventConfig((c) => ({ ...c, name: e.target.value }))}
+                placeholder="Tech Conference 2026"
+                className="rounded-lg border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-950)] px-3 py-2 text-sm outline-none focus:border-[var(--color-keppel-500)]"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--color-baltic-sea-300)]">Date label</label>
+              <input
+                type="text"
+                value={eventConfig.date}
+                onChange={(e) => setEventConfig((c) => ({ ...c, date: e.target.value }))}
+                placeholder="June 2026 · Amsterdam"
+                className="rounded-lg border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-950)] px-3 py-2 text-sm outline-none focus:border-[var(--color-keppel-500)]"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--color-baltic-sea-300)]">Event start date</label>
+              <input
+                type="date"
+                value={eventConfig.eventStart ?? eventConfig.eventDay}
+                onChange={(e) => setEventConfig((c) => ({ ...c, eventStart: e.target.value, eventDay: e.target.value }))}
+                className="rounded-lg border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-950)] px-3 py-2 text-sm outline-none focus:border-[var(--color-keppel-500)]"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-medium text-[var(--color-baltic-sea-300)]">Event end date</label>
+              <input
+                type="date"
+                value={eventConfig.eventEnd ?? eventConfig.eventStart ?? eventConfig.eventDay}
+                onChange={(e) => setEventConfig((c) => ({ ...c, eventEnd: e.target.value }))}
+                className="rounded-lg border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-950)] px-3 py-2 text-sm outline-none focus:border-[var(--color-keppel-500)]"
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-3 border-t border-[var(--color-baltic-sea-800)] px-4 py-3">
+            {eventConfigSaved && (
+              <span className="text-xs text-[var(--color-keppel-400)]">Saved</span>
+            )}
+            <button
+              onClick={saveEventConfig}
+              disabled={eventConfigSaving}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[var(--color-keppel-500)] px-4 py-2 text-sm font-semibold text-[var(--color-keppel-950)] transition-colors hover:bg-[var(--color-keppel-400)] disabled:opacity-50"
+            >
+              <FloppyDisk className="h-4 w-4" />
+              {eventConfigSaving ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
+
+    {/* Add / Edit session dialog */}
+
+    {editing && (
+      <Dialog
+        title={editing.id ? "Edit Session" : "Add Session"}
+        onClose={() => setEditing(null)}
+        width={480}
+      >
+        <div className="flex flex-col gap-4 py-1">
+          <SessionField label="Session name *">
+            <input
+              value={editing.name || ""}
+              onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+              placeholder="Keynote: The Future of React"
+              className={sessionInputCls}
+            />
+          </SessionField>
+          <SessionField label="Speaker">
+            <input
+              value={editing.speaker || ""}
+              onChange={(e) => setEditing({ ...editing, speaker: e.target.value })}
+              placeholder="Jane Doe · Acme"
+              className={sessionInputCls}
+            />
+          </SessionField>
+          <div className="grid grid-cols-2 gap-4">
+            <SessionField label="Start time">
+              <input
+                value={editing.startTime || ""}
+                onChange={(e) => setEditing({ ...editing, startTime: e.target.value })}
+                placeholder="09:30"
+                className={sessionInputCls}
+              />
+            </SessionField>
+            <SessionField label="End time">
+              <input
+                value={editing.endTime || ""}
+                onChange={(e) => setEditing({ ...editing, endTime: e.target.value })}
+                placeholder="10:15"
+                className={sessionInputCls}
+              />
+            </SessionField>
+          </div>
+          <SessionField label="Session date (overrides event day)">
+            <input
+              type="date"
+              value={editing.date || ""}
+              onChange={(e) => setEditing({ ...editing, date: e.target.value || undefined })}
+              className={sessionInputCls}
+            />
+          </SessionField>
+          <div className="grid grid-cols-2 gap-4">
+            <SessionField label="Track">
+              <DropDownList
+                data={SESSION_TRACKS}
+                value={editing.track || "Main Stage"}
+                onChange={(e) => setEditing({ ...editing, track: e.value })}
+                style={{ width: "100%" }}
+              />
+            </SessionField>
+          </div>
+          <SessionField label="Description">
+            <textarea
+              value={editing.description || ""}
+              onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+              placeholder="A short summary of the talk…"
+              rows={3}
+              className={sessionInputCls + " resize-none"}
+            />
+          </SessionField>
+        </div>
+        <DialogActionsBar>
+          <button
+            onClick={() => setEditing(null)}
+            className="rounded-lg border border-[var(--color-baltic-sea-700)] px-4 py-2 text-sm font-medium text-[var(--color-baltic-sea-100)] hover:bg-[var(--color-baltic-sea-800)]"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={saveSession}
+            disabled={sessionSaving || !editing.name?.trim()}
+            className="rounded-lg bg-[var(--color-keppel-500)] px-4 py-2 text-sm font-semibold text-[var(--color-keppel-950)] hover:bg-[var(--color-keppel-400)] disabled:opacity-50"
+          >
+            {sessionSaving ? "Saving…" : editing.id ? "Save changes" : "Add session"}
+          </button>
+        </DialogActionsBar>
+      </Dialog>
+    )}
+
+    {/* Delete confirm dialog */}
+    {confirmDelete && (
+      <Dialog title="Delete session?" onClose={() => setConfirmDelete(null)} width={400}>
+        <p className="py-2 text-sm text-[var(--color-baltic-sea-200)]">
+          Remove <span className="font-semibold">{confirmDelete.name}</span> from the schedule? This can't be undone.
+        </p>
+        <DialogActionsBar>
+          <button
+            onClick={() => setConfirmDelete(null)}
+            className="rounded-lg border border-[var(--color-baltic-sea-700)] px-4 py-2 text-sm font-medium text-[var(--color-baltic-sea-100)] hover:bg-[var(--color-baltic-sea-800)]"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={doDelete}
+            className="rounded-lg bg-destructive px-4 py-2 text-sm font-semibold text-white hover:bg-destructive/80"
+          >
+            Delete
+          </button>
+        </DialogActionsBar>
+      </Dialog>
+    )}
+    </>
+  )
+}
+
+const SESSION_TRACKS = ["Main Stage", "Workshop", "Panel", "Lightning Talk"]
+const sessionInputCls = "w-full rounded-lg border border-[var(--color-baltic-sea-700)] bg-[var(--color-baltic-sea-950)] px-3 py-2 text-sm outline-none focus:border-[var(--color-keppel-500)]"
+
+function SessionField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      {children}
+    </label>
   )
 }
 

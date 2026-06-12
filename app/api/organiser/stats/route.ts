@@ -61,10 +61,8 @@ export async function GET(request: Request) {
     })
     if (!res.ok) throw new Error(`stats ${res.status}`)
     const data = await res.json()
-    // If nothing is live, fall back to seeded demo data so the dashboard isn't empty.
-    if (!data || data.totalListeners === 0) {
-      return NextResponse.json({ ...demoStats(), _seeded: true })
-    }
+    // Return the real payload — including zeros for an ended session. Demo data
+    // is only used for the explicit ?demo=1 path or when the server is down.
     return NextResponse.json(data)
   } catch {
     return NextResponse.json({ ...demoStats(), _seeded: true })
